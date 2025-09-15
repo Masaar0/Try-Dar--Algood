@@ -149,47 +149,47 @@ const OrdersManagement: React.FC = () => {
   // إضافة CSS للتأكد من التمرير السليم
   useEffect(() => {
     const mobileScrollStyles = `
-      @media (max-width: 768px) {
-        body {
-          overflow: auto !important;
-          overscroll-behavior: auto !important;
-          touch-action: auto !important;
-          position: static !important;
-          height: auto !important;
-          min-height: 100vh !important;
-        }
-        
-        html {
-          overflow: auto !important;
-          overscroll-behavior: auto !important;
-        }
-        
-        .space-y-6 {
-          overflow: visible !important;
-          height: auto !important;
-          min-height: auto !important;
-        }
-        
-        .mobile-scroll-container {
-          overflow: visible !important;
-          height: auto !important;
-          min-height: auto !important;
-        }
-        
-        /* التأكد من أن الجداول قابلة للتمرير */
-        .overflow-x-auto {
-          -webkit-overflow-scrolling: touch;
-          overscroll-behavior-x: contain;
-        }
-        
-        /* إصلاح مشكلة التمرير في المودالز */
-        .modal-content {
-          max-height: 90vh !important;
-          overflow-y: auto !important;
-          -webkit-overflow-scrolling: touch !important;
-        }
+    @media (max-width: 768px) {
+      body {
+        overflow: auto !important;
+        overscroll-behavior: auto !important;
+        touch-action: auto !important;
+        position: static !important;
+        height: auto !important;
+        min-height: 100vh !important;
       }
-    `;
+      
+      html {
+        overflow: auto !important;
+        overscroll-behavior: auto !important;
+      }
+      
+      .space-y-6 {
+        overflow: visible !important;
+        height: auto !important;
+        min-height: auto !important;
+      }
+      
+      .mobile-scroll-container {
+        overflow: visible !important;
+        height: auto !important;
+        min-height: auto !important;
+      }
+      
+      /* التأكد من أن الجداول قابلة للتمرير */
+      .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+      }
+      
+      /* إصلاح مشكلة التمرير في المودالز */
+      .modal-content {
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+    }
+  `;
 
     const style = document.createElement("style");
     style.textContent = mobileScrollStyles;
@@ -759,7 +759,6 @@ const OrdersManagement: React.FC = () => {
       </div>
     );
   };
-
   return (
     <div className="space-y-6 mobile-scroll-container">
       {/* Page Header */}
@@ -1352,143 +1351,143 @@ const OrdersManagement: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <Package className="w-4 h-4 text-[#563660]" />
-                  العناصر ({selectedOrder.items.length})
-                </h3>
-                <div className="space-y-2">
-                  {selectedOrder.items.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="bg-white rounded-lg p-2 sm:p-3 border border-gray-100"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 sm:w-6 sm:h-6 bg-[#563660] text-white rounded-full flex items-center justify-center text-xs font-bold">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-900 text-xs sm:text-sm block">
-                              جاكيت مخصص
-                            </span>
-                            <span className="text-xs text-gray-600">
-                              {item.jacketConfig.size} | ك{item.quantity}
-                            </span>
-                          </div>
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Package className="w-4 h-4 text-[#563660]" />
+                العناصر ({selectedOrder.items.length})
+              </h3>
+              <div className="space-y-2">
+                {selectedOrder.items.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-lg p-2 sm:p-3 border border-gray-100"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 bg-[#563660] text-white rounded-full flex items-center justify-center text-xs font-bold">
+                          {index + 1}
                         </div>
-                        <div className="text-left">
-                          <span className="font-bold text-[#563660] text-xs sm:text-sm block">
-                            {formatPrice(item.price * item.quantity)}
+                        <div>
+                          <span className="font-medium text-gray-900 text-xs sm:text-sm block">
+                            جاكيت مخصص
+                          </span>
+                          <span className="text-xs text-gray-600">
+                            {item.jacketConfig.size} | ك{item.quantity}
                           </span>
                         </div>
                       </div>
+                      <div className="text-left">
+                        <span className="font-bold text-[#563660] text-xs sm:text-sm block">
+                          {formatPrice(item.price * item.quantity)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-amber-50 rounded-lg p-3 sm:p-4 border border-amber-100">
+              <h3 className="text-sm sm:text-base font-semibold text-amber-900 mb-2 flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                الحالات ({selectedOrder.statusHistory.length})
+              </h3>
+              <div className="max-h-24 sm:max-h-32 overflow-y-auto space-y-1">
+                {selectedOrder.statusHistory
+                  .slice()
+                  .reverse()
+                  .slice(0, 3)
+                  .map((history, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-white rounded p-2 border border-amber-100"
+                    >
+                      <div
+                        className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center flex-shrink-0 ${getStatusColor(
+                          history.status
+                        )} bg-opacity-20`}
+                      >
+                        {React.cloneElement(
+                          getStatusIcon(history.status) as React.ReactElement,
+                          { className: "w-2 h-2 sm:w-3 sm:h-3" }
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-900 text-xs sm:text-sm truncate">
+                            {history.statusName}
+                          </span>
+                          <span className="text-xs text-gray-500 whitespace-nowrap ml-1">
+                            {(() => {
+                              const date = new Date(history.timestamp);
+                              const year = date.getFullYear();
+                              const month = String(
+                                date.getMonth() + 1
+                              ).padStart(2, "0");
+                              const day = String(date.getDate()).padStart(
+                                2,
+                                "0"
+                              );
+                              return `${year}/${month}/${day}`;
+                            })()}
+                          </span>
+                        </div>
+                        {history.note && (
+                          <p className="text-xs text-gray-600 truncate sm:line-clamp-1">
+                            {history.note}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ))}
-                </div>
+                {selectedOrder.statusHistory.length > 3 && (
+                  <div className="text-center text-xs text-gray-500 py-1">
+                    +{selectedOrder.statusHistory.length - 3} حالات أخرى
+                  </div>
+                )}
               </div>
+            </div>
 
-              <div className="bg-amber-50 rounded-lg p-3 sm:p-4 border border-amber-100">
-                <h3 className="text-sm sm:text-base font-semibold text-amber-900 mb-2 flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  الحالات ({selectedOrder.statusHistory.length})
-                </h3>
-                <div className="max-h-24 sm:max-h-32 overflow-y-auto space-y-1">
-                  {selectedOrder.statusHistory
-                    .slice()
-                    .reverse()
-                    .slice(0, 3)
-                    .map((history, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-2 bg-white rounded p-2 border border-amber-100"
-                      >
-                        <div
-                          className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center flex-shrink-0 ${getStatusColor(
-                            history.status
-                          )} bg-opacity-20`}
-                        >
-                          {React.cloneElement(
-                            getStatusIcon(history.status) as React.ReactElement,
-                            { className: "w-2 h-2 sm:w-3 sm:h-3" }
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-gray-900 text-xs sm:text-sm truncate">
-                              {history.statusName}
-                            </span>
-                            <span className="text-xs text-gray-500 whitespace-nowrap ml-1">
-                              {(() => {
-                                const date = new Date(history.timestamp);
-                                const year = date.getFullYear();
-                                const month = String(
-                                  date.getMonth() + 1
-                                ).padStart(2, "0");
-                                const day = String(date.getDate()).padStart(
-                                  2,
-                                  "0"
-                                );
-                                return `${year}/${month}/${day}`;
-                              })()}
-                            </span>
-                          </div>
-                          {history.note && (
-                            <p className="text-xs text-gray-600 truncate sm:line-clamp-1">
-                              {history.note}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  {selectedOrder.statusHistory.length > 3 && (
-                    <div className="text-center text-xs text-gray-500 py-1">
-                      +{selectedOrder.statusHistory.length - 3} حالات أخرى
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="grid grid-cols-4 gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setNewStatus(selectedOrder.status);
+                  orderDetailsModal.closeModal();
+                  updateStatusModal.openModal();
+                }}
+                className="flex items-center justify-center gap-1 py-2 px-2 bg-blue-50 text-blue-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">تحديث</span>
+                <span className="sm:hidden">حالة</span>
+              </button>
+              <button
+                onClick={() => handleCreateTemporaryLink(selectedOrder.id)}
+                disabled={isCreatingLink === selectedOrder.id}
+                className="flex items-center justify-center gap-1 py-2 px-2 bg-purple-50 text-purple-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
+              >
+                {isCreatingLink === selectedOrder.id ? (
+                  <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                ) : copiedLinks.has(selectedOrder.id) ? (
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                ) : (
+                  <LinkIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                )}
+                <span>رابط</span>
+              </button>
 
-              <div className="grid grid-cols-4 gap-2 pt-2">
-                <button
-                  onClick={() => {
-                    setNewStatus(selectedOrder.status);
-                    orderDetailsModal.closeModal();
-                    updateStatusModal.openModal();
-                  }}
-                  className="flex items-center justify-center gap-1 py-2 px-2 bg-blue-50 text-blue-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors"
-                >
-                  <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">تحديث</span>
-                  <span className="sm:hidden">حالة</span>
-                </button>
-                <button
-                  onClick={() => handleCreateTemporaryLink(selectedOrder.id)}
-                  disabled={isCreatingLink === selectedOrder.id}
-                  className="flex items-center justify-center gap-1 py-2 px-2 bg-purple-50 text-purple-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
-                >
-                  {isCreatingLink === selectedOrder.id ? (
-                    <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
-                  ) : copiedLinks.has(selectedOrder.id) ? (
-                    <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-                  ) : (
-                    <LinkIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                  )}
-                  <span>رابط</span>
-                </button>
-
-                <button
-                  onClick={() =>
-                    navigate(`/admin/orders/${selectedOrder.id}/edit`)
-                  }
-                  className="flex items-center justify-center gap-1 py-2 px-2 bg-orange-50 text-orange-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-orange-100 transition-colors"
-                >
-                  <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">تعديل</span>
-                  <span className="sm:hidden">طلب</span>
-                </button>
-              </div>
+              <button
+                onClick={() =>
+                  navigate(`/admin/orders/${selectedOrder.id}/edit`)
+                }
+                className="flex items-center justify-center gap-1 py-2 px-2 bg-orange-50 text-orange-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-orange-100 transition-colors"
+              >
+                <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">تعديل</span>
+                <span className="sm:hidden">طلب</span>
+              </button>
             </div>
           </div>
         </Modal>
