@@ -49,6 +49,7 @@ const OrdersManagement: React.FC = () => {
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [pendingOrders, setPendingOrders] = useState<OrderData[]>([]);
   const [stats, setStats] = useState<OrderStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPending, setIsLoadingPending] = useState(false);
   const [error, setError] = useState("");
@@ -463,6 +464,7 @@ const OrdersManagement: React.FC = () => {
   );
 
   const loadStats = async () => {
+    setIsLoadingStats(true);
     try {
       const token = authService.getToken();
       if (!token) return;
@@ -471,6 +473,8 @@ const OrdersManagement: React.FC = () => {
       setStats(statsData);
     } catch (error) {
       console.error("Error loading stats:", error);
+    } finally {
+      setIsLoadingStats(false);
     }
   };
 
@@ -943,53 +947,77 @@ const OrdersManagement: React.FC = () => {
       </AnimatePresence>
 
       {/* Statistics */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm">الطلبات المؤكدة</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm">الطلبات المؤكدة</p>
+              {isLoadingStats ? (
+                <div className="flex items-center justify-center mt-1">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : (
                 <p className="text-2xl font-bold">{totalOrders}</p>
-              </div>
-              <Package className="w-8 h-8 text-blue-200" />
+              )}
             </div>
-          </div>
-
-          <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg p-4 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-amber-100 text-sm">قيد المراجعة</p>
-                <p className="text-2xl font-bold">
-                  {stats.pendingReview.total}
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-amber-200" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100 text-sm">الإيرادات</p>
-                <p className="text-xl font-bold">
-                  {formatPrice(stats.totalRevenue)}
-                </p>
-              </div>
-              <DollarSign className="w-8 h-8 text-green-200" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm">قيد التنفيذ</p>
-                <p className="text-2xl font-bold">{stats.inProduction}</p>
-              </div>
-              <Package className="w-8 h-8 text-purple-200" />
-            </div>
+            <Package className="w-8 h-8 text-blue-200" />
           </div>
         </div>
-      )}
+
+        <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg p-4 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-amber-100 text-sm">قيد المراجعة</p>
+              {isLoadingStats ? (
+                <div className="flex items-center justify-center mt-1">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : (
+                <p className="text-2xl font-bold">
+                  {stats?.pendingReview?.total || totalPendingOrders}
+                </p>
+              )}
+            </div>
+            <Clock className="w-8 h-8 text-amber-200" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm">الإيرادات</p>
+              {isLoadingStats ? (
+                <div className="flex items-center justify-center mt-1">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : (
+                <p className="text-xl font-bold">
+                  {stats?.totalRevenue
+                    ? formatPrice(stats.totalRevenue)
+                    : "0.00 ر.س"}
+                </p>
+              )}
+            </div>
+            <DollarSign className="w-8 h-8 text-green-200" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm">قيد التنفيذ</p>
+              {isLoadingStats ? (
+                <div className="flex items-center justify-center mt-1">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : (
+                <p className="text-2xl font-bold">{stats?.inProduction || 0}</p>
+              )}
+            </div>
+            <Package className="w-8 h-8 text-purple-200" />
+          </div>
+        </div>
+      </div>
 
       {/* Order Tabs */}
       <div className="bg-white rounded-lg border border-gray-200 p-1">
