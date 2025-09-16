@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package,
@@ -35,9 +35,17 @@ import authService from "../../services/authService";
 import ConfirmationModal from "../ui/ConfirmationModal";
 import Modal from "../ui/Modal";
 import { useModal } from "../../hooks/useModal";
+import { useOrdersCache } from "../../hooks/useOrdersCache";
 
 const OrdersManagement: React.FC = () => {
   const navigate = useNavigate();
+  const {
+    getFromCache,
+    setCache,
+    invalidateCache,
+    isLoading: cacheLoading,
+  } = useOrdersCache();
+
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [pendingOrders, setPendingOrders] = useState<OrderData[]>([]);
   const [stats, setStats] = useState<OrderStats | null>(null);
@@ -303,57 +311,136 @@ const OrdersManagement: React.FC = () => {
     }
   };
 
-  const loadOrders = async () => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const token = authService.getToken();
-      if (!token) throw new Error("رمز المصادقة غير موجود");
+  const loadOrders = useCallback(
+    async (forceRefresh = false) => {
+      setIsLoading(true);
+      setError("");
 
-      const result = await orderService.getAllOrders(token, {
-        page: currentPage,
-        limit: ordersPerPage,
-        search: searchTerm,
-        status: statusFilter,
-        includePending: false,
-      });
-      setOrders(result.orders);
-      setTotalPages(result.pagination.totalPages);
-      setTotalOrders(result.pagination.totalOrders);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "فشل في تحميل الطلبات");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      try {
+        const token = authService.getToken();
+        if (!token) throw new Error("رمز المصادقة غير موجود");
 
-  const loadPendingOrders = async () => {
-    setIsLoadingPending(true);
-    setError("");
-    try {
-      const token = authService.getToken();
-      if (!token) throw new Error("رمز المصادقة غير موجود");
+        // التحقق من الكاش أولاً
+        if (!forceRefresh) {
+          const cached = getFromCache(
+            currentPage,
+            ordersPerPage,
+            statusFilter,
+            searchTerm,
+            false
+          );
 
-      const result = await orderService.getAllOrders(token, {
-        page: pendingCurrentPage,
-        limit: ordersPerPage,
-        search: searchTerm,
-        status: "pending",
-        includePending: true,
-      });
-      setPendingOrders(result.orders);
-      setPendingTotalPages(result.pagination.totalPages);
-      setTotalPendingOrders(result.pagination.totalOrders);
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "فشل في تحميل الطلبات قيد المراجعة"
-      );
-    } finally {
-      setIsLoadingPending(false);
-    }
-  };
+          if (cached) {
+            setOrders(cached.data);
+            setTotalPages(cached.pagination.totalPages);
+            setTotalOrders(cached.pagination.totalOrders);
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        const result = await orderService.getAllOrders(token, {
+          page: currentPage,
+          limit: ordersPerPage,
+          search: searchTerm,
+          status: statusFilter,
+          includePending: false,
+        });
+
+        setOrders(result.orders);
+        setTotalPages(result.pagination.totalPages);
+        setTotalOrders(result.pagination.totalOrders);
+
+        // حفظ في الكاش
+        setCache(
+          currentPage,
+          ordersPerPage,
+          statusFilter,
+          searchTerm,
+          false,
+          result.orders,
+          result.pagination
+        );
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : "فشل في تحميل الطلبات"
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      currentPage,
+      ordersPerPage,
+      statusFilter,
+      searchTerm,
+      getFromCache,
+      setCache,
+    ]
+  );
+
+  const loadPendingOrders = useCallback(
+    async (forceRefresh = false) => {
+      setIsLoadingPending(true);
+      setError("");
+
+      try {
+        const token = authService.getToken();
+        if (!token) throw new Error("رمز المصادقة غير موجود");
+
+        // التحقق من الكاش أولاً
+        if (!forceRefresh) {
+          const cached = getFromCache(
+            pendingCurrentPage,
+            ordersPerPage,
+            "pending",
+            searchTerm,
+            true
+          );
+
+          if (cached) {
+            setPendingOrders(cached.data);
+            setPendingTotalPages(cached.pagination.totalPages);
+            setTotalPendingOrders(cached.pagination.totalOrders);
+            setIsLoadingPending(false);
+            return;
+          }
+        }
+
+        const result = await orderService.getAllOrders(token, {
+          page: pendingCurrentPage,
+          limit: ordersPerPage,
+          search: searchTerm,
+          status: "pending",
+          includePending: true,
+        });
+
+        setPendingOrders(result.orders);
+        setPendingTotalPages(result.pagination.totalPages);
+        setTotalPendingOrders(result.pagination.totalOrders);
+
+        // حفظ في الكاش
+        setCache(
+          pendingCurrentPage,
+          ordersPerPage,
+          "pending",
+          searchTerm,
+          true,
+          result.orders,
+          result.pagination
+        );
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "فشل في تحميل الطلبات قيد المراجعة"
+        );
+      } finally {
+        setIsLoadingPending(false);
+      }
+    },
+    [pendingCurrentPage, ordersPerPage, searchTerm, getFromCache, setCache]
+  );
 
   const loadStats = async () => {
     try {
@@ -395,15 +482,18 @@ const OrdersManagement: React.FC = () => {
     }
   };
 
-  // دالة لتحديث كل البيانات بعد أي تغيير
-  const refreshAllData = async () => {
+  // دالة لتحديث كل البيانات بعد أي تغيير مع مسح الكاش
+  const refreshAllData = useCallback(async () => {
+    // مسح الكاش قبل التحديث
+    invalidateCache();
+
     await Promise.all([
-      loadOrders(), // تحديث الطلبات المؤكدة
-      loadPendingOrders(), // تحديث الطلبات قيد المراجعة
+      loadOrders(true), // تحديث الطلبات المؤكدة مع إجبار التحديث
+      loadPendingOrders(true), // تحديث الطلبات قيد المراجعة مع إجبار التحديث
       loadStats(), // تحديث الإحصائيات
       updateOrderCounts(), // تحديث الأعداد
     ]);
-  };
+  }, [loadOrders, loadPendingOrders, invalidateCache]);
 
   // Initial load - load both confirmed and pending orders
   useEffect(() => {
@@ -419,7 +509,7 @@ const OrdersManagement: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Load once on component mount
 
-  // Reload data when page changes
+  // Reload data when page changes (with cache)
   useEffect(() => {
     if (activeTab === "confirmed") {
       loadOrders();
@@ -452,38 +542,44 @@ const OrdersManagement: React.FC = () => {
     }
   };
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     if (activeTab === "confirmed") {
       setCurrentPage(1);
-      loadOrders();
+      loadOrders(true); // إجبار التحديث للبحث الجديد
     } else {
       setPendingCurrentPage(1);
-      loadPendingOrders();
+      loadPendingOrders(true); // إجبار التحديث للبحث الجديد
     }
-  };
+  }, [activeTab, loadOrders, loadPendingOrders]);
 
-  const handlePageChange = (page: number) => {
-    if (activeTab === "confirmed" && page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    } else if (
-      activeTab === "pending" &&
-      page >= 1 &&
-      page <= pendingTotalPages
-    ) {
-      setPendingCurrentPage(page);
-    }
-  };
+  const handlePageChange = useCallback(
+    (page: number) => {
+      if (activeTab === "confirmed" && page >= 1 && page <= totalPages) {
+        setCurrentPage(page);
+      } else if (
+        activeTab === "pending" &&
+        page >= 1 &&
+        page <= pendingTotalPages
+      ) {
+        setPendingCurrentPage(page);
+      }
+    },
+    [activeTab, totalPages, pendingTotalPages]
+  );
 
-  const handleStatusFilterChange = (status: string) => {
-    setStatusFilter(status);
-    if (activeTab === "confirmed") {
-      setCurrentPage(1);
-      loadOrders();
-    } else {
-      setPendingCurrentPage(1);
-      loadPendingOrders();
-    }
-  };
+  const handleStatusFilterChange = useCallback(
+    (status: string) => {
+      setStatusFilter(status);
+      if (activeTab === "confirmed") {
+        setCurrentPage(1);
+        loadOrders(true); // إجبار التحديث للتصفية الجديدة
+      } else {
+        setPendingCurrentPage(1);
+        loadPendingOrders(true); // إجبار التحديث للتصفية الجديدة
+      }
+    },
+    [activeTab, loadOrders, loadPendingOrders]
+  );
 
   const handleViewOrder = (order: OrderData) => {
     setSelectedOrder(order);
@@ -786,6 +882,14 @@ const OrdersManagement: React.FC = () => {
             )}
             تحديث شامل
           </button>
+
+          {/* مؤشر الكاش */}
+          {cacheLoading && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              جاري التحميل من الكاش...
+            </div>
+          )}
         </div>
       </div>
 

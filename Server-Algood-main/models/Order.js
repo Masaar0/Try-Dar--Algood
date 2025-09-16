@@ -398,6 +398,108 @@ class OrderModel {
       throw new Error("فشل في البحث عن الطلبات");
     }
   }
+
+  /**
+   * الحصول على الطلبات مع التصفح التدريجي المحسن للأداء
+   */
+  async getOrdersPaginated({
+    page = 1,
+    limit = 20,
+    status,
+    search,
+    dateFrom,
+    dateTo,
+    includePending = false,
+  }) {
+    try {
+      // بناء استعلام البحث
+      let searchQuery = {};
+
+      // تصفية الحالة
+      if (status) {
+        searchQuery.status = status;
+      } else if (!includePending) {
+        // استبعاد الطلبات قيد المراجعة إذا لم يتم طلبها صراحة
+        searchQuery.status = { $ne: ORDER_STATUSES.PENDING };
+      }
+
+      // تصفية التاريخ
+      if (dateFrom || dateTo) {
+        searchQuery.createdAt = {};
+        if (dateFrom) {
+          searchQuery.createdAt.$gte = new Date(dateFrom);
+        }
+        if (dateTo) {
+          searchQuery.createdAt.$lte = new Date(dateTo);
+        }
+      }
+
+      // البحث النصي - محسن للأداء
+      if (search) {
+        const searchRegex = new RegExp(search, "i");
+        searchQuery.$or = [
+          { orderNumber: searchRegex },
+          { trackingCode: searchRegex },
+          { "customerInfo.name": searchRegex },
+          { "customerInfo.phone": searchRegex },
+        ];
+      }
+
+      // حساب التصفح
+      const skip = (page - 1) * limit;
+
+      // تحسين الاستعلام باستخدام select لتقليل البيانات المنقولة
+      const selectFields = {
+        id: 1,
+        orderNumber: 1,
+        trackingCode: 1,
+        customerInfo: 1,
+        totalPrice: 1,
+        status: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        statusHistory: { $slice: -5 }, // آخر 5 حالات فقط
+        estimatedDelivery: 1,
+        shippedAt: 1,
+        deliveredAt: 1,
+      };
+
+      // تنفيذ الاستعلامات بشكل متوازي للحصول على أفضل أداء
+      const [orders, totalCount] = await Promise.all([
+        // جلب الطلبات مع التصفح والتحسينات
+        OrderSchema.find(searchQuery, selectFields)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean()
+          .exec(),
+        // حساب العدد الإجمالي
+        OrderSchema.countDocuments(searchQuery).exec(),
+      ]);
+
+      // حساب معلومات التصفح
+      const totalPages = Math.ceil(totalCount / limit);
+      const hasNext = page < totalPages;
+      const hasPrev = page > 1;
+
+      return {
+        orders: orders.map((order) => ({
+          ...order,
+          _id: undefined,
+        })),
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalOrders: totalCount,
+          hasNext,
+          hasPrev,
+          limit,
+        },
+      };
+    } catch (error) {
+      throw new Error("فشل في الحصول على الطلبات مع التصفح");
+    }
+  }
   /**
    * الحصول على إحصائيات الطلبات
    */

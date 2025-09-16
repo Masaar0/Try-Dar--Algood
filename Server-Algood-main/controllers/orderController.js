@@ -147,7 +147,7 @@ export const trackOrderByCode = async (req, res) => {
 };
 // تتبع الطلب بواسطة رمز التتبع (للتوافق مع النسخة القديمة)
 export const trackOrder = trackOrderByCode;
-// الحصول على جميع الطلبات (يتطلب مصادقة المدير)
+// الحصول على جميع الطلبات (يتطلب مصادقة المدير) - محسن للأداء
 export const getAllOrders = async (req, res) => {
   try {
     if (!req.admin || req.admin.role !== "admin") {
@@ -168,23 +168,18 @@ export const getAllOrders = async (req, res) => {
       includePending = false,
     } = req.query;
 
-    const filters = {};
-    if (status) filters.status = status;
-    if (dateFrom) filters.dateFrom = dateFrom;
-    if (dateTo) filters.dateTo = dateTo;
+    // استخدام التصفح التدريجي المحسن بدلاً من جلب جميع البيانات
+    const result = await OrderModel.getOrdersPaginated({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      status,
+      search,
+      dateFrom,
+      dateTo,
+      includePending: includePending === "true",
+    });
 
-    const allOrders = await OrderModel.searchOrders(search || "", filters);
-
-    const filteredOrders =
-      includePending === "true"
-        ? allOrders
-        : allOrders.filter((order) => order.status !== "pending");
-
-    const startIndex = (parseInt(page) - 1) * parseInt(limit);
-    const endIndex = startIndex + parseInt(limit);
-    const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
-
-    const ordersWithStatusNames = paginatedOrders.map((order) => ({
+    const ordersWithStatusNames = result.orders.map((order) => ({
       ...order,
       statusName: STATUS_NAMES[order.status],
       statusHistory: order.statusHistory.map((history) => ({
@@ -198,13 +193,7 @@ export const getAllOrders = async (req, res) => {
       message: "تم الحصول على الطلبات بنجاح",
       data: {
         orders: ordersWithStatusNames,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(filteredOrders.length / parseInt(limit)),
-          totalOrders: filteredOrders.length,
-          hasNext: endIndex < filteredOrders.length,
-          hasPrev: startIndex > 0,
-        },
+        pagination: result.pagination,
       },
     });
   } catch (error) {
