@@ -1424,13 +1424,13 @@ const OrdersManagement: React.FC = () => {
                   <div className="flex items-center gap-2 text-blue-800">
                     <User className="w-3 h-3" />
                     <span className="font-medium truncate">
-                      {selectedOrder.customerInfo.name}
+                      {selectedOrder.customerInfo?.name || "غير محدد"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-blue-700">
                     <Phone className="w-3 h-3" />
                     <span className="truncate">
-                      {selectedOrder.customerInfo.phone}
+                      {selectedOrder.customerInfo?.phone || "غير محدد"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-blue-600">
@@ -1460,10 +1460,10 @@ const OrdersManagement: React.FC = () => {
             <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
               <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-2 flex items-center gap-2">
                 <Package className="w-4 h-4 text-[#563660]" />
-                العناصر ({selectedOrder.items.length})
+                العناصر ({selectedOrder.items?.length || 0})
               </h3>
               <div className="space-y-2">
-                {selectedOrder.items.map((item, index) => (
+                {(selectedOrder.items || []).map((item, index) => (
                   <div
                     key={item.id}
                     className="bg-white rounded-lg p-2 sm:p-3 border border-gray-100"
@@ -1496,10 +1496,10 @@ const OrdersManagement: React.FC = () => {
             <div className="bg-amber-50 rounded-lg p-3 sm:p-4 border border-amber-100">
               <h3 className="text-sm sm:text-base font-semibold text-amber-900 mb-2 flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                الحالات ({selectedOrder.statusHistory.length})
+                الحالات ({selectedOrder.statusHistory?.length || 0})
               </h3>
               <div className="max-h-24 sm:max-h-32 overflow-y-auto space-y-1">
-                {selectedOrder.statusHistory
+                {(selectedOrder.statusHistory || [])
                   .slice()
                   .reverse()
                   .slice(0, 3)
@@ -1546,9 +1546,9 @@ const OrdersManagement: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                {selectedOrder.statusHistory.length > 3 && (
+                {(selectedOrder.statusHistory?.length || 0) > 3 && (
                   <div className="text-center text-xs text-gray-500 py-1">
-                    +{selectedOrder.statusHistory.length - 3} حالات أخرى
+                    +{(selectedOrder.statusHistory?.length || 0) - 3} حالات أخرى
                   </div>
                 )}
               </div>
