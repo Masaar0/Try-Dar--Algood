@@ -948,75 +948,95 @@ const OrdersManagement: React.FC = () => {
 
       {/* Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+        <motion.div
+          className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm">الطلبات المؤكدة</p>
-              {isLoadingStats ? (
-                <div className="flex items-center justify-center mt-1">
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                </div>
-              ) : (
-                <p className="text-2xl font-bold">{totalOrders}</p>
-              )}
+              <motion.p
+                className="text-2xl font-bold"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: isLoadingStats ? 0 : 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {totalOrders}
+              </motion.p>
             </div>
             <Package className="w-8 h-8 text-blue-200" />
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg p-4 text-white">
+        <motion.div
+          className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg p-4 text-white"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-amber-100 text-sm">قيد المراجعة</p>
-              {isLoadingStats ? (
-                <div className="flex items-center justify-center mt-1">
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                </div>
-              ) : (
-                <p className="text-2xl font-bold">
-                  {stats?.pendingReview?.total || totalPendingOrders}
-                </p>
-              )}
+              <motion.p
+                className="text-2xl font-bold"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: isLoadingStats ? 0 : 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {stats?.pendingReview?.total || totalPendingOrders}
+              </motion.p>
             </div>
             <Clock className="w-8 h-8 text-amber-200" />
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+        <motion.div
+          className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm">الإيرادات</p>
-              {isLoadingStats ? (
-                <div className="flex items-center justify-center mt-1">
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                </div>
-              ) : (
-                <p className="text-xl font-bold">
-                  {stats?.totalRevenue
-                    ? formatPrice(stats.totalRevenue)
-                    : "0.00 ر.س"}
-                </p>
-              )}
+              <motion.p
+                className="text-xl font-bold"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: isLoadingStats ? 0 : 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {stats?.totalRevenue
+                  ? formatPrice(stats.totalRevenue)
+                  : "0.00 ر.س"}
+              </motion.p>
             </div>
             <DollarSign className="w-8 h-8 text-green-200" />
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+        <motion.div
+          className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100 text-sm">قيد التنفيذ</p>
-              {isLoadingStats ? (
-                <div className="flex items-center justify-center mt-1">
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                </div>
-              ) : (
-                <p className="text-2xl font-bold">{stats?.inProduction || 0}</p>
-              )}
+              <motion.p
+                className="text-2xl font-bold"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: isLoadingStats ? 0 : 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {stats?.inProduction || 0}
+              </motion.p>
             </div>
             <Package className="w-8 h-8 text-purple-200" />
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Order Tabs */}
