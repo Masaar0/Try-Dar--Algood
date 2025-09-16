@@ -184,10 +184,30 @@ const OrdersManagement: React.FC = () => {
         min-height: auto !important;
       }
       
-      /* التأكد من أن الجداول قابلة للتمرير */
+      /* إزالة شريط التمرير من الجداول */
       .overflow-x-auto {
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-x: contain;
+        overflow-x: visible !important;
+      }
+      
+      /* منع ظهور شريط التمرير في أي مكان آخر */
+      .overflow-y-auto {
+        overflow-y: visible !important;
+      }
+      
+      .max-h-\\[70vh\\] {
+        max-height: none !important;
+      }
+      
+      .max-h-\\[80vh\\] {
+        max-height: none !important;
+      }
+      
+      .max-h-24 {
+        max-height: none !important;
+      }
+      
+      .max-h-32 {
+        max-height: none !important;
       }
       
       /* إصلاح مشكلة التمرير في المودالز */
@@ -1095,7 +1115,7 @@ const OrdersManagement: React.FC = () => {
               )}
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -1380,7 +1400,7 @@ const OrdersManagement: React.FC = () => {
           size="lg"
           options={orderDetailsModal.options}
         >
-          <div className="space-y-3 max-h-[70vh] sm:max-h-[80vh] overflow-y-auto">
+          <div className="space-y-3">
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-gradient-to-r from-[#563660] to-[#4b2e55] rounded-lg p-3 sm:p-4 text-white">
                 <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
@@ -1498,7 +1518,7 @@ const OrdersManagement: React.FC = () => {
                 <Clock className="w-4 h-4" />
                 الحالات ({selectedOrder.statusHistory?.length || 0})
               </h3>
-              <div className="max-h-24 sm:max-h-32 overflow-y-auto space-y-1">
+              <div className="space-y-1">
                 {(selectedOrder.statusHistory || [])
                   .slice()
                   .reverse()
