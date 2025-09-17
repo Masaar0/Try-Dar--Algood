@@ -16,7 +16,6 @@ import {
   ArrowLeft,
   Info,
   CheckCircle,
-  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePricing } from "../../hooks/usePricing";
@@ -49,7 +48,6 @@ const JacketCustomizer: React.FC = () => {
     } | null;
     finalPrice: number;
   } | null>(null);
-  const [isLoadingPricing, setIsLoadingPricing] = useState(false);
 
   const jacketImageCaptureRef = useRef<JacketImageCaptureRef>(null);
 
@@ -128,14 +126,6 @@ const JacketCustomizer: React.FC = () => {
   // حساب تفاصيل التسعير من الباك إند مع debouncing
   useEffect(() => {
     const loadPricingBreakdown = async () => {
-      // إظهار Loader فقط في التحميل الأول أو عند تغيير الكمية بشكل ملحوظ
-      const isFirstLoad = !pricingBreakdown;
-      const shouldShowLoader = isFirstLoad;
-
-      if (shouldShowLoader) {
-        setIsLoadingPricing(true);
-      }
-
       try {
         // فلترة الشعارات مع إزالة المكررات
         const uniqueLogos = jacketState.logos.filter(
@@ -187,10 +177,6 @@ const JacketCustomizer: React.FC = () => {
           appliedDiscount: null,
           finalPrice: 220 * quantity,
         });
-      } finally {
-        if (shouldShowLoader) {
-          setIsLoadingPricing(false);
-        }
       }
     };
 
@@ -329,9 +315,6 @@ const JacketCustomizer: React.FC = () => {
                 <span className="text-sm font-medium text-gray-700">
                   تفاصيل السعر
                 </span>
-                {isLoadingPricing && (
-                  <Loader2 className="w-4 h-4 animate-spin text-[#563660]" />
-                )}
                 <button
                   onClick={() => setShowPricingDetails(!showPricingDetails)}
                   className="text-xs text-[#563660] hover:text-[#4b2e55] transition-colors flex items-center gap-1"

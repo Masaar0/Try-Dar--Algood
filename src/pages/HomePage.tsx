@@ -25,6 +25,19 @@ const HomePage: React.FC = () => {
   const [currentImage, setCurrentImage] = useState(0);
 
   useEffect(() => {
+    // تحميل الصور مسبقاً لتحسين الأداء
+    const preloadImages = () => {
+      images.forEach((imageSrc) => {
+        const img = new Image();
+        img.src = imageSrc;
+        img.loading = "eager";
+        img.decoding = "sync";
+        img.fetchPriority = "high";
+      });
+    };
+
+    preloadImages();
+
     const interval = setInterval(() => {
       setCurrentImage((prev) => (prev + 1) % images.length);
     }, 6000);
@@ -80,6 +93,9 @@ const HomePage: React.FC = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: index === currentImage ? 1 : 0 }}
                 transition={{ duration: 1, ease: "easeInOut" }}
+                loading="eager"
+                decoding="sync"
+                fetchPriority="high"
               />
             ))}
             <motion.div

@@ -108,7 +108,8 @@ const LogoOverlay: React.FC<LogoOverlayProps> = ({ logo, view }) => {
         }}
         className="logo-overlay"
         loading="eager"
-        decoding="sync"
+        decoding="async"
+        fetchPriority="high"
       />
     </div>
   );
