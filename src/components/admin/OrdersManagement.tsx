@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Package,
   Search,
-  Filter,
   Eye,
   Edit3,
   Trash2,
@@ -24,6 +23,7 @@ import {
   Check,
   LinkIcon,
   Copy,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import orderService, {
@@ -81,6 +81,7 @@ const OrdersManagement: React.FC = () => {
   const [linkCache, setLinkCache] = useState<
     Map<string, { link: string; timestamp: number }>
   >(new Map());
+  const [hasActiveSearch, setHasActiveSearch] = useState(false);
 
   useEffect(() => {
     // حل مشكلة التمرير على الهواتف
@@ -423,7 +424,11 @@ const OrdersManagement: React.FC = () => {
   };
 
   const loadOrders = useCallback(
-    async (forceRefresh = false) => {
+    async (
+      forceRefresh = false,
+      customSearchTerm = searchTerm,
+      customStatusFilter = statusFilter
+    ) => {
       setIsLoading(true);
       setError("");
 
@@ -436,8 +441,8 @@ const OrdersManagement: React.FC = () => {
           const cached = getFromCache(
             currentPage,
             ordersPerPage,
-            statusFilter,
-            searchTerm,
+            customStatusFilter,
+            customSearchTerm,
             false
           );
 
@@ -453,8 +458,8 @@ const OrdersManagement: React.FC = () => {
         const result = await orderService.getAllOrders(token, {
           page: currentPage,
           limit: ordersPerPage,
-          search: searchTerm,
-          status: statusFilter,
+          search: customSearchTerm,
+          status: customStatusFilter,
           includePending: false,
         });
 
@@ -466,8 +471,8 @@ const OrdersManagement: React.FC = () => {
         setCache(
           currentPage,
           ordersPerPage,
-          statusFilter,
-          searchTerm,
+          customStatusFilter,
+          customSearchTerm,
           false,
           result.orders,
           result.pagination
@@ -491,7 +496,7 @@ const OrdersManagement: React.FC = () => {
   );
 
   const loadPendingOrders = useCallback(
-    async (forceRefresh = false) => {
+    async (forceRefresh = false, customSearchTerm = searchTerm) => {
       setIsLoadingPending(true);
       setError("");
 
@@ -505,7 +510,7 @@ const OrdersManagement: React.FC = () => {
             pendingCurrentPage,
             ordersPerPage,
             "pending",
-            searchTerm,
+            customSearchTerm,
             true
           );
 
@@ -521,7 +526,7 @@ const OrdersManagement: React.FC = () => {
         const result = await orderService.getAllOrders(token, {
           page: pendingCurrentPage,
           limit: ordersPerPage,
-          search: searchTerm,
+          search: customSearchTerm,
           status: "pending",
           includePending: true,
         });
@@ -535,7 +540,7 @@ const OrdersManagement: React.FC = () => {
           pendingCurrentPage,
           ordersPerPage,
           "pending",
-          searchTerm,
+          customSearchTerm,
           true,
           result.orders,
           result.pagination
@@ -629,14 +634,14 @@ const OrdersManagement: React.FC = () => {
       loadOrders();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, searchTerm, statusFilter]);
+  }, [currentPage, statusFilter]);
 
   useEffect(() => {
     if (activeTab === "pending") {
       loadPendingOrders();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCurrentPage, searchTerm]);
+  }, [pendingCurrentPage]);
 
   const handleTabSwitch = (tab: "confirmed" | "pending") => {
     setActiveTab(tab);
@@ -656,15 +661,70 @@ const OrdersManagement: React.FC = () => {
     }
   };
 
+  // البحث اليدوي عند الضغط على Enter أو تغيير الفلترة
   const handleSearch = useCallback(() => {
+    // تجاهل البحث إذا كان النص فارغاً أو يحتوي على مسافات فقط
+    if (searchTerm.trim() === "") {
+      return;
+    }
+
+    // تحديد أن هناك بحث نشط
+    setHasActiveSearch(true);
+
+    // استخدام النص المقطوع من المسافات للبحث
+    const trimmedSearchTerm = searchTerm.trim();
+
     if (activeTab === "confirmed") {
       setCurrentPage(1);
-      loadOrders(true); // إجبار التحديث للبحث الجديد
+      loadOrders(true, trimmedSearchTerm, statusFilter); // إجبار التحديث للبحث الجديد
     } else {
       setPendingCurrentPage(1);
-      loadPendingOrders(true); // إجبار التحديث للبحث الجديد
+      loadPendingOrders(true, trimmedSearchTerm); // إجبار التحديث للبحث الجديد
+    }
+  }, [activeTab, searchTerm, statusFilter, loadOrders, loadPendingOrders]);
+
+  // إلغاء الفلترة والبحث وإعادة البيانات للحالة الطبيعية
+  const handleClearFilters = useCallback(() => {
+    // مسح الفلاتر
+    setSearchTerm("");
+    setStatusFilter("");
+    setHasActiveSearch(false); // إعادة تعيين حالة البحث النشط
+
+    // إعادة تحميل البيانات بدون فلترة
+    if (activeTab === "confirmed") {
+      setCurrentPage(1);
+      // تحميل البيانات بدون فلترة - تمرير قيم فارغة صراحة
+      loadOrders(true, "", "");
+    } else {
+      setPendingCurrentPage(1);
+      // تحميل البيانات بدون فلترة - تمرير قيمة فارغة صراحة
+      loadPendingOrders(true, "");
     }
   }, [activeTab, loadOrders, loadPendingOrders]);
+
+  // مسح البحث عند تغيير التبويب
+  useEffect(() => {
+    setSearchTerm("");
+    setHasActiveSearch(false); // إعادة تعيين حالة البحث النشط
+  }, [activeTab]);
+
+  // إلغاء البحث التلقائي عند مسح كل شيء من حقل البحث
+  useEffect(() => {
+    // إذا كان حقل البحث فارغاً أو يحتوي على مسافات فقط وكان هناك بحث نشط مسبقاً
+    if (searchTerm.trim() === "" && hasActiveSearch) {
+      // إعادة تعيين حالة البحث النشط
+      setHasActiveSearch(false);
+
+      // إعادة تحميل البيانات بدون فلترة
+      if (activeTab === "confirmed") {
+        setCurrentPage(1);
+        loadOrders(true, "", "");
+      } else {
+        setPendingCurrentPage(1);
+        loadPendingOrders(true, "");
+      }
+    }
+  }, [searchTerm, hasActiveSearch, activeTab, loadOrders, loadPendingOrders]);
 
   const handlePageChange = useCallback(
     (page: number) => {
@@ -1040,19 +1100,21 @@ const OrdersManagement: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Statistics - متجاوبة */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <motion.div
-          className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white"
+          className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-3 sm:p-4 text-white"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm">الطلبات المؤكدة</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-blue-100 text-xs sm:text-sm truncate">
+                الطلبات المؤكدة
+              </p>
               <motion.p
-                className="text-2xl font-bold"
+                className="text-lg sm:text-2xl font-bold"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: isLoadingStats ? 0 : 1 }}
                 transition={{ duration: 0.3 }}
@@ -1060,21 +1122,23 @@ const OrdersManagement: React.FC = () => {
                 {totalOrders}
               </motion.p>
             </div>
-            <Package className="w-8 h-8 text-blue-200" />
+            <Package className="w-6 h-6 sm:w-8 sm:h-8 text-blue-200 flex-shrink-0" />
           </div>
         </motion.div>
 
         <motion.div
-          className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg p-4 text-white"
+          className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg p-3 sm:p-4 text-white"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-amber-100 text-sm">قيد المراجعة</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-amber-100 text-xs sm:text-sm truncate">
+                قيد المراجعة
+              </p>
               <motion.p
-                className="text-2xl font-bold"
+                className="text-lg sm:text-2xl font-bold"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: isLoadingStats ? 0 : 1 }}
                 transition={{ duration: 0.3 }}
@@ -1082,21 +1146,23 @@ const OrdersManagement: React.FC = () => {
                 {stats?.pendingReview?.total || totalPendingOrders}
               </motion.p>
             </div>
-            <Clock className="w-8 h-8 text-amber-200" />
+            <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-amber-200 flex-shrink-0" />
           </div>
         </motion.div>
 
         <motion.div
-          className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white"
+          className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-3 sm:p-4 text-white"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">الإيرادات</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-green-100 text-xs sm:text-sm truncate">
+                الإيرادات
+              </p>
               <motion.p
-                className="text-xl font-bold"
+                className="text-sm sm:text-xl font-bold"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: isLoadingStats ? 0 : 1 }}
                 transition={{ duration: 0.3 }}
@@ -1106,21 +1172,23 @@ const OrdersManagement: React.FC = () => {
                   : "0.00 ر.س"}
               </motion.p>
             </div>
-            <DollarSign className="w-8 h-8 text-green-200" />
+            <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-green-200 flex-shrink-0" />
           </div>
         </motion.div>
 
         <motion.div
-          className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white"
+          className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-3 sm:p-4 text-white"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm">قيد التنفيذ</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-purple-100 text-xs sm:text-sm truncate">
+                قيد التنفيذ
+              </p>
               <motion.p
-                className="text-2xl font-bold"
+                className="text-lg sm:text-2xl font-bold"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: isLoadingStats ? 0 : 1 }}
                 transition={{ duration: 0.3 }}
@@ -1128,66 +1196,108 @@ const OrdersManagement: React.FC = () => {
                 {stats?.inProduction || 0}
               </motion.p>
             </div>
-            <Package className="w-8 h-8 text-purple-200" />
+            <Package className="w-6 h-6 sm:w-8 sm:h-8 text-purple-200 flex-shrink-0" />
           </div>
         </motion.div>
       </div>
 
-      {/* Order Tabs */}
+      {/* Order Tabs - متجاوبة */}
       <div className="bg-white rounded-lg border border-gray-200 p-1">
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-col sm:flex-row gap-1">
           <button
             onClick={() => handleTabSwitch("confirmed")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm ${
+            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg font-medium transition-all text-sm flex-1 sm:flex-none ${
               activeTab === "confirmed"
-                ? "bg-[#563660] text-white"
+                ? "bg-[#563660] text-white shadow-sm"
                 : "text-gray-600 hover:bg-gray-100"
             }`}
           >
-            <CheckCircle className="w-4 h-4" />
-            الطلبات المؤكدة ({totalOrders})
+            <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">
+              <span className="hidden sm:inline">الطلبات المؤكدة</span>
+              <span className="sm:hidden">مؤكدة</span>
+            </span>
+            <span className="bg-white bg-opacity-20 px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0">
+              {totalOrders}
+            </span>
           </button>
           <button
             onClick={() => handleTabSwitch("pending")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm ${
+            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg font-medium transition-all text-sm flex-1 sm:flex-none ${
               activeTab === "pending"
-                ? "bg-amber-500 text-white"
+                ? "bg-amber-500 text-white shadow-sm"
                 : "text-gray-600 hover:bg-gray-100"
             }`}
           >
-            <Clock className="w-4 h-4" />
-            قيد المراجعة ({totalPendingOrders})
+            <Clock className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">
+              <span className="hidden sm:inline">قيد المراجعة</span>
+              <span className="sm:hidden">مراجعة</span>
+            </span>
+            <span className="bg-white bg-opacity-20 px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0">
+              {totalPendingOrders}
+            </span>
           </button>
         </div>
       </div>
 
-      {/* Search and Filter Tools */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="ابحث برقم الطلب، رمز التتبع، اسم العميل..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pr-10 pl-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm"
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
-              />
+      {/* Search and Filter Tools - متجاوبة */}
+      <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {/* شريط البحث مع الأزرار */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="ابحث برقم الطلب، رمز التتبع، اسم العميل..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      // قطع المسافات من النص قبل البحث
+                      setSearchTerm(searchTerm.trim());
+                      handleSearch();
+                    }
+                  }}
+                  className="w-full pr-10 pl-3 py-2.5 sm:py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm"
+                />
+              </div>
             </div>
+
+            {/* أزرار البحث والإلغاء */}
+            <button
+              onClick={handleSearch}
+              disabled={isLoading || isLoadingPending}
+              className="flex items-center justify-center gap-1 px-3 py-2.5 sm:px-4 sm:py-2 bg-[#563660] text-white font-medium rounded-lg hover:bg-[#4b2e55] transition-all duration-200 disabled:opacity-50 text-sm flex-shrink-0"
+              title="بحث"
+            >
+              <Search className="w-4 h-4" />
+              <span className="hidden sm:inline">بحث</span>
+            </button>
+
+            {/* زر إلغاء الفلترة - يظهر فقط عند وجود بحث أو فلترة نشطة */}
+            {(searchTerm.trim() || statusFilter) && (
+              <button
+                onClick={handleClearFilters}
+                disabled={isLoading || isLoadingPending}
+                className="flex items-center justify-center gap-1 px-3 py-2.5 sm:px-4 sm:py-2 bg-gray-500 text-white font-medium rounded-lg hover:bg-gray-600 transition-all duration-200 disabled:opacity-50 text-sm flex-shrink-0"
+                title="إلغاء البحث والفلترة"
+              >
+                <X className="w-4 h-4" />
+                <span className="hidden sm:inline">إلغاء</span>
+              </button>
+            )}
           </div>
 
-          <div className="flex gap-2">
-            {activeTab === "confirmed" && (
+          {/* فلترة الحالات */}
+          {activeTab === "confirmed" && (
+            <div className="flex-1 sm:flex-none">
               <select
                 value={statusFilter}
                 onChange={(e) => handleStatusFilterChange(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm"
+                className="w-full px-3 py-2.5 sm:py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm"
               >
                 <option value="">جميع الحالات</option>
                 {orderStatuses
@@ -1198,17 +1308,8 @@ const OrdersManagement: React.FC = () => {
                     </option>
                   ))}
               </select>
-            )}
-
-            <button
-              onClick={handleSearch}
-              disabled={isLoading || isLoadingPending}
-              className="flex items-center gap-2 px-4 py-2 bg-[#563660] text-white font-medium rounded-lg hover:bg-[#4b2e55] transition-all duration-200 disabled:opacity-50 text-sm"
-            >
-              <Filter className="w-4 h-4" />
-              فلترة
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1245,11 +1346,13 @@ const OrdersManagement: React.FC = () => {
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden space-y-0">
           <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-gray-700">
-                {activeTab === "confirmed"
-                  ? `الطلبات المؤكدة (${totalOrders} طلب)`
-                  : `الطلبات قيد المراجعة (${totalPendingOrders} طلب)`}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium text-gray-700">
+                  {activeTab === "confirmed"
+                    ? `الطلبات المؤكدة (${totalOrders} طلب)`
+                    : `الطلبات قيد المراجعة (${totalPendingOrders} طلب)`}
+                </h3>
+              </div>
               {activeTab === "pending" && (
                 <div className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-medium">
                   لا تُحتسب في الإيرادات
