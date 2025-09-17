@@ -50,7 +50,7 @@ interface SidebarState {
 }
 
 interface WindowWithSidebarState extends Window {
-  customizationSidebarState?: SidebarState;
+  customizationSidebarStates?: { [pageKey: string]: SidebarState };
 }
 
 const CustomizationSidebar: React.FC<CustomizationSidebarProps> = ({
@@ -66,11 +66,26 @@ const CustomizationSidebar: React.FC<CustomizationSidebarProps> = ({
   const { items } = useCart();
   const sidebarRef = useRef<HTMLDivElement>(null);
 
+  // تحديد معرف الصفحة بناءً على المسار
+  const getPageKey = (): string => {
+    const path = location.pathname;
+    if (path === "/customizer") {
+      return "customizer";
+    } else if (path.startsWith("/edit-order/")) {
+      return `temporary-edit-${path.split("/")[2]}`;
+    } else if (path.startsWith("/admin/orders/") && path.endsWith("/edit")) {
+      return `admin-edit-${path.split("/")[3]}`;
+    }
+    return "default";
+  };
+
   // Load state from memory or use defaults
   const loadSavedState = (): SidebarState => {
     try {
       const windowWithState = window as WindowWithSidebarState;
-      const savedState = windowWithState.customizationSidebarState;
+      const pageKey = getPageKey();
+      const savedStates = windowWithState.customizationSidebarStates || {};
+      const savedState = savedStates[pageKey];
       if (savedState) {
         return savedState;
       }
@@ -96,10 +111,14 @@ const CustomizationSidebar: React.FC<CustomizationSidebarProps> = ({
     (state: Partial<SidebarState>) => {
       try {
         const windowWithState = window as WindowWithSidebarState;
-        const currentState =
-          windowWithState.customizationSidebarState || loadSavedState();
+        const pageKey = getPageKey();
+        const currentStates = windowWithState.customizationSidebarStates || {};
+        const currentState = currentStates[pageKey] || loadSavedState();
         const newState = { ...currentState, ...state };
-        windowWithState.customizationSidebarState = newState;
+        windowWithState.customizationSidebarStates = {
+          ...currentStates,
+          [pageKey]: newState,
+        };
       } catch (error) {
         console.warn("Error saving sidebar state:", error);
       }
@@ -129,6 +148,25 @@ const CustomizationSidebar: React.FC<CustomizationSidebarProps> = ({
     productTab?: "materials" | "sizes";
   }>(initialState.lastVisited);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // إعادة تعيين الحالة عند تغيير الصفحة
+  useEffect(() => {
+    const pageKey = getPageKey();
+    const windowWithState = window as WindowWithSidebarState;
+
+    // تنظيف الحالات القديمة للصفحات الأخرى
+    if (windowWithState.customizationSidebarStates) {
+      const currentStates = windowWithState.customizationSidebarStates;
+      const cleanedStates: { [key: string]: SidebarState } = {};
+
+      // الاحتفاظ بحالة الصفحة الحالية فقط
+      if (currentStates[pageKey]) {
+        cleanedStates[pageKey] = currentStates[pageKey];
+      }
+
+      windowWithState.customizationSidebarStates = cleanedStates;
+    }
+  }, [location.pathname]);
 
   // Update memory state when local state changes
   useEffect(() => {

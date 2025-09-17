@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useJacket, JacketView } from "../../context/JacketContext";
 import FrontView from "./views/FrontView";
 import BackView from "./views/BackView";
@@ -11,19 +12,118 @@ interface JacketViewerProps {
   isCapturing?: boolean;
 }
 
+interface ViewerState {
+  zoom: number;
+  desktopZoom: number;
+  isViewsVisible: boolean;
+  isControlsVisible: boolean;
+}
+
+interface WindowWithViewerState extends Window {
+  jacketViewerStates?: { [pageKey: string]: ViewerState };
+}
+
 const JacketViewer: React.FC<JacketViewerProps> = ({
   isSidebarOpen,
   isCapturing,
 }) => {
+  const location = useLocation();
   const { jacketState, setCurrentView } = useJacket();
   const { currentView } = jacketState;
-  const [zoom, setZoom] = useState(window.innerWidth > 1250 ? 1.5 : 1);
-  const [desktopZoom, setDesktopZoom] = useState(1.5);
-  const [isViewsVisible, setIsViewsVisible] = useState(false);
-  const [isControlsVisible, setIsControlsVisible] = useState(false);
   const jacketRef = useRef<HTMLDivElement>(null);
 
+  // تحديد معرف الصفحة بناءً على المسار
+  const getPageKey = (): string => {
+    const path = location.pathname;
+    if (path === "/customizer") {
+      return "customizer";
+    } else if (path.startsWith("/edit-order/")) {
+      return `temporary-edit-${path.split("/")[2]}`;
+    } else if (path.startsWith("/admin/orders/") && path.endsWith("/edit")) {
+      return `admin-edit-${path.split("/")[3]}`;
+    }
+    return "default";
+  };
+
+  // تحميل الحالة المحفوظة أو استخدام القيم الافتراضية
+  const loadSavedState = (): ViewerState => {
+    try {
+      const windowWithState = window as WindowWithViewerState;
+      const pageKey = getPageKey();
+      const savedStates = windowWithState.jacketViewerStates || {};
+      const savedState = savedStates[pageKey];
+      if (savedState) {
+        return savedState;
+      }
+    } catch (error) {
+      console.warn("Error loading viewer state:", error);
+    }
+
+    return {
+      zoom: window.innerWidth > 1250 ? 1.5 : 1,
+      desktopZoom: 1.5,
+      isViewsVisible: false,
+      isControlsVisible: false,
+    };
+  };
+
+  // حفظ الحالة في الذاكرة
+  const saveStateToMemory = React.useCallback((state: Partial<ViewerState>) => {
+    try {
+      const windowWithState = window as WindowWithViewerState;
+      const pageKey = getPageKey();
+      const currentStates = windowWithState.jacketViewerStates || {};
+      const currentState = currentStates[pageKey] || loadSavedState();
+      const newState = { ...currentState, ...state };
+      windowWithState.jacketViewerStates = {
+        ...currentStates,
+        [pageKey]: newState,
+      };
+    } catch (error) {
+      console.warn("Error saving viewer state:", error);
+    }
+  }, []);
+
+  const initialState = loadSavedState();
+  const [zoom, setZoom] = useState(initialState.zoom);
+  const [desktopZoom, setDesktopZoom] = useState(initialState.desktopZoom);
+  const [isViewsVisible, setIsViewsVisible] = useState(
+    initialState.isViewsVisible
+  );
+  const [isControlsVisible, setIsControlsVisible] = useState(
+    initialState.isControlsVisible
+  );
+
   const views: JacketView[] = ["front", "right", "back", "left"];
+
+  // إعادة تعيين الحالة عند تغيير الصفحة
+  useEffect(() => {
+    const pageKey = getPageKey();
+    const windowWithState = window as WindowWithViewerState;
+
+    // تنظيف الحالات القديمة للصفحات الأخرى
+    if (windowWithState.jacketViewerStates) {
+      const currentStates = windowWithState.jacketViewerStates;
+      const cleanedStates: { [key: string]: ViewerState } = {};
+
+      // الاحتفاظ بحالة الصفحة الحالية فقط
+      if (currentStates[pageKey]) {
+        cleanedStates[pageKey] = currentStates[pageKey];
+      }
+
+      windowWithState.jacketViewerStates = cleanedStates;
+    }
+  }, [location.pathname]);
+
+  // حفظ الحالة في الذاكرة عند تغييرها
+  useEffect(() => {
+    saveStateToMemory({
+      zoom,
+      desktopZoom,
+      isViewsVisible,
+      isControlsVisible,
+    });
+  }, [zoom, desktopZoom, isViewsVisible, isControlsVisible, saveStateToMemory]);
 
   const handleViewChange = (view: JacketView) => {
     setCurrentView(view);
