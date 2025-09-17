@@ -226,8 +226,7 @@ export const getOrderById = async (req, res) => {
       });
     }
 
-    const orders = await OrderModel.getOrders();
-    const order = orders.find((o) => o.id === orderId);
+    const order = await OrderModel.getOrderById(orderId);
 
     if (!order) {
       return res.status(404).json({
@@ -282,8 +281,7 @@ export const updateOrder = async (req, res) => {
       });
     }
 
-    const orders = await OrderModel.getOrders();
-    const existingOrder = orders.find((o) => o.id === orderId);
+    const existingOrder = await OrderModel.getOrderById(orderId);
 
     if (!existingOrder) {
       return res.status(400).json({
@@ -529,8 +527,7 @@ export const deleteOrder = async (req, res) => {
       });
     }
 
-    const orders = await OrderModel.getOrders();
-    const orderToDelete = orders.find((o) => o.id === orderId);
+    const orderToDelete = await OrderModel.getOrderById(orderId);
 
     if (!orderToDelete) {
       return res.status(404).json({
@@ -607,8 +604,7 @@ export const getOrderImages = async (req, res) => {
       });
     }
 
-    const orders = await OrderModel.getOrders();
-    const order = orders.find((o) => o.id === orderId);
+    const order = await OrderModel.getOrderById(orderId);
 
     if (!order) {
       return res.status(404).json({

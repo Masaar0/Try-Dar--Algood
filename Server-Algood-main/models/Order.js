@@ -186,6 +186,26 @@ class OrderModel {
   }
 
   /**
+   * الحصول على طلب بواسطة معرف الطلب
+   */
+  async getOrderById(orderId) {
+    try {
+      const order = await OrderSchema.findOne({ id: orderId }).lean();
+
+      if (!order) {
+        return null;
+      }
+
+      return {
+        ...order,
+        _id: undefined,
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
    * الحصول على جميع الطلبات
    */
   async getOrders() {
