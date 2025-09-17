@@ -1349,8 +1349,8 @@ const OrdersManagement: React.FC = () => {
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-medium text-gray-700">
                   {activeTab === "confirmed"
-                    ? `الطلبات المؤكدة (${totalOrders} طلب)`
-                    : `الطلبات قيد المراجعة (${totalPendingOrders} طلب)`}
+                    ? `الطلبات المؤكدة (${totalOrders})`
+                    : ` قيد المراجعة (${totalPendingOrders})`}
                 </h3>
               </div>
               {activeTab === "pending" && (
