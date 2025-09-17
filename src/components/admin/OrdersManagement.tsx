@@ -188,9 +188,48 @@ const OrdersManagement: React.FC = () => {
         min-height: auto !important;
       }
       
-      /* إزالة شريط التمرير من الجداول */
+      /* تمكين التمرير الأفقي للجدول في الهواتف فقط */
       .overflow-x-auto {
-        overflow-x: visible !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: thin !important;
+      }
+      
+      .overflow-x-auto::-webkit-scrollbar {
+        height: 6px !important;
+      }
+      
+      .overflow-x-auto::-webkit-scrollbar-track {
+        background: #f1f5f9 !important;
+        border-radius: 3px !important;
+      }
+      
+      .overflow-x-auto::-webkit-scrollbar-thumb {
+        background: #cbd5e1 !important;
+        border-radius: 3px !important;
+      }
+      
+      .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8 !important;
+      }
+      
+      /* تحسينات للتنقل بين الصفحات في الهواتف */
+      .max-w-\\[200px\\] {
+        max-width: 200px !important;
+      }
+      
+      /* تحسين أزرار التنقل في الهواتف */
+      .min-w-\\[32px\\] {
+        min-width: 32px !important;
+      }
+      
+      /* تحسين المسافات في الهواتف */
+      .gap-1 {
+        gap: 0.25rem !important;
+      }
+      
+      .gap-3 {
+        gap: 0.75rem !important;
       }
       
       /* منع ظهور شريط التمرير في أي مكان آخر */
@@ -802,7 +841,7 @@ const OrdersManagement: React.FC = () => {
     return icons[status] || <Package className="w-4 h-4" />;
   };
 
-  // الحل الأول: إخفاء النص تماماً في وضع الهواتف
+  // مكون التنقل بين الصفحات المتجاوب
   const PaginationComponent = ({
     currentPageProp,
     totalPagesProp,
@@ -818,23 +857,23 @@ const OrdersManagement: React.FC = () => {
 
     const getPageNumbers = () => {
       const pages = [];
-      const maxVisiblePages = 5;
+      const maxVisiblePages = window.innerWidth <= 768 ? 3 : 5; // عدد أقل في الهواتف
 
       if (totalPagesProp <= maxVisiblePages) {
         for (let i = 1; i <= totalPagesProp; i++) {
           pages.push(i);
         }
       } else {
-        if (currentPageProp <= 3) {
-          for (let i = 1; i <= 4; i++) {
+        if (currentPageProp <= 2) {
+          for (let i = 1; i <= 3; i++) {
             pages.push(i);
           }
           pages.push("...");
           pages.push(totalPagesProp);
-        } else if (currentPageProp >= totalPagesProp - 2) {
+        } else if (currentPageProp >= totalPagesProp - 1) {
           pages.push(1);
           pages.push("...");
-          for (let i = totalPagesProp - 3; i <= totalPagesProp; i++) {
+          for (let i = totalPagesProp - 2; i <= totalPagesProp; i++) {
             pages.push(i);
           }
         } else {
@@ -852,51 +891,52 @@ const OrdersManagement: React.FC = () => {
     };
 
     return (
-      <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 rounded-lg">
-        {/* الحل الأول: إخفاء تماماً في الهواتف */}
-        <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
-          <span>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
+        {/* معلومات الصفحات - متجاوبة */}
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 order-2 sm:order-1">
+          <span className="hidden sm:inline">
             عرض {(currentPageProp - 1) * ordersPerPage + 1} إلى{" "}
             {Math.min(currentPageProp * ordersPerPage, totalOrdersProp)} من{" "}
             {totalOrdersProp} طلب
           </span>
-        </div>
-
-        {/* الحل الثاني: نسخة مختصرة للهواتف */}
-        <div className="md:hidden flex items-center gap-2 text-xs text-gray-600">
-          <span>
-            {currentPageProp} / {totalPagesProp}
+          <span className="sm:hidden">
+            صفحة {currentPageProp} من {totalPagesProp}
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        {/* أزرار التنقل - متجاوبة */}
+        <div className="flex items-center gap-1 order-1 sm:order-2">
+          {/* أزرار التنقل السريع - مخفية في الهواتف */}
           <button
             onClick={() => onPageChange(1)}
             disabled={currentPageProp === 1}
-            className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="hidden sm:flex p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="الصفحة الأولى"
           >
             <ChevronsRight className="w-4 h-4" />
           </button>
 
+          {/* زر الصفحة السابقة */}
           <button
             onClick={() => onPageChange(currentPageProp - 1)}
             disabled={currentPageProp === 1}
-            className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
             title="الصفحة السابقة"
           >
             <ChevronRight className="w-4 h-4" />
+            <span className="hidden sm:inline">السابق</span>
           </button>
 
-          <div className="flex items-center gap-1">
+          {/* أرقام الصفحات */}
+          <div className="flex items-center gap-1 overflow-x-auto max-w-[200px] sm:max-w-none">
             {getPageNumbers().map((page, index) => (
               <React.Fragment key={index}>
                 {page === "..." ? (
-                  <span className="px-3 py-2 text-gray-500">...</span>
+                  <span className="px-2 py-2 text-gray-500 text-sm">...</span>
                 ) : (
                   <button
                     onClick={() => onPageChange(page as number)}
-                    className={`px-3 py-2 rounded-lg border transition-colors ${
+                    className={`px-2 sm:px-3 py-2 rounded-lg border transition-colors text-sm min-w-[32px] sm:min-w-[40px] ${
                       currentPageProp === page
                         ? "bg-[#563660] text-white border-[#563660]"
                         : "border-gray-300 text-gray-600 hover:bg-gray-100"
@@ -909,19 +949,22 @@ const OrdersManagement: React.FC = () => {
             ))}
           </div>
 
+          {/* زر الصفحة التالية */}
           <button
             onClick={() => onPageChange(currentPageProp + 1)}
             disabled={currentPageProp === totalPagesProp}
-            className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
             title="الصفحة التالية"
           >
+            <span className="hidden sm:inline">التالي</span>
             <ChevronLeft className="w-4 h-4" />
           </button>
 
+          {/* أزرار التنقل السريع - مخفية في الهواتف */}
           <button
             onClick={() => onPageChange(totalPagesProp)}
             disabled={currentPageProp === totalPagesProp}
-            className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="hidden sm:flex p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="الصفحة الأخيرة"
           >
             <ChevronsLeft className="w-4 h-4" />
@@ -1214,31 +1257,32 @@ const OrdersManagement: React.FC = () => {
               )}
             </div>
           </div>
-          <div>
-            <table className="w-full">
+          {/* Container مع التمرير الأفقي للهواتف فقط */}
+          <div className="overflow-x-auto md:overflow-x-visible -mx-4 md:mx-0 px-4 md:px-0">
+            <table className="w-full min-w-[800px] md:min-w-0">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   {activeTab === "pending" && (
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       تأكيد
                     </th>
                   )}
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     رقم الطلب
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     العميل
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     الحالة
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     الإجمالي
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     التاريخ
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     الإجراءات
                   </th>
                 </tr>
@@ -1269,12 +1313,12 @@ const OrdersManagement: React.FC = () => {
                       )}
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <Package className="w-4 h-4 text-[#563660] mr-2" />
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
+                          <Package className="w-4 h-4 text-[#563660] mr-2 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">
                               {order.orderNumber}
                             </div>
-                            <div className="text-xs text-gray-500 font-mono">
+                            <div className="text-xs text-gray-500 font-mono truncate">
                               {order.trackingCode}
                             </div>
                           </div>
@@ -1282,12 +1326,12 @@ const OrdersManagement: React.FC = () => {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <User className="w-4 h-4 text-gray-400 mr-2" />
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
+                          <User className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">
                               {order.customerInfo.name}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 truncate">
                               {order.customerInfo.phone}
                             </div>
                           </div>
@@ -1297,24 +1341,28 @@ const OrdersManagement: React.FC = () => {
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
                             order.status
-                          )} bg-opacity-10 border`}
+                          )} bg-opacity-10 border whitespace-nowrap`}
                         >
                           {getStatusIcon(order.status)}
-                          {order.statusName}
+                          <span className="truncate">{order.statusName}</span>
                         </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <div className="flex flex-col">
-                          <span>{formatPrice(order.totalPrice)}</span>
+                          <span className="truncate">
+                            {formatPrice(order.totalPrice)}
+                          </span>
                           {activeTab === "pending" && (
-                            <span className="text-xs text-amber-600">
+                            <span className="text-xs text-amber-600 truncate">
                               غير محتسب
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(order.createdAt)}
+                        <span className="truncate">
+                          {formatDate(order.createdAt)}
+                        </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
