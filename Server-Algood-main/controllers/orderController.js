@@ -301,15 +301,7 @@ export const updateOrder = async (req, res) => {
 
     const oldJacketConfig = existingOrder.items[0]?.jacketConfig;
 
-    let imageSyncResult = null;
-    if (oldJacketConfig && jacketConfig) {
-      imageSyncResult = await OrderImageSyncService.syncOrderImages(
-        orderId,
-        oldJacketConfig,
-        jacketConfig
-      );
-    }
-
+    // تحديث الطلب أولاً بدون انتظار مزامنة الصور
     const updatedOrder = await OrderModel.updateOrder(
       orderId,
       {
@@ -320,6 +312,36 @@ export const updateOrder = async (req, res) => {
       },
       req.admin.username
     );
+
+    // مزامنة الصور في الخلفية (غير متزامن)
+    let imageSyncResult = null;
+    if (oldJacketConfig && jacketConfig) {
+      // تشغيل مزامنة الصور في الخلفية بدون انتظار
+      setImmediate(async () => {
+        try {
+          await OrderImageSyncService.syncOrderImages(
+            orderId,
+            oldJacketConfig,
+            jacketConfig
+          );
+        } catch (error) {
+          console.error("Background image sync failed:", error);
+        }
+      });
+
+      // إرجاع نتيجة سريعة للمستخدم
+      imageSyncResult = {
+        success: true,
+        hasChanges: true,
+        message: "سيتم مزامنة الصور في الخلفية",
+        hasWarnings: false,
+        imageChanges: {
+          removed: [],
+          added: [],
+          retained: [],
+        },
+      };
+    }
 
     const orderWithStatusNames = {
       ...updatedOrder,

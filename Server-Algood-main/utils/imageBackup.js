@@ -64,18 +64,26 @@ export const copyImageToOrderFolder = async (originalPublicId, orderNumber) => {
 };
 
 /**
- * نسخ عدة صور إلى مجلد الطلب
+ * نسخ عدة صور إلى مجلد الطلب (محسن للأداء)
  */
 export const copyImagesToOrderFolder = async (imagePublicIds, orderNumber) => {
   const results = [];
 
-  for (const publicId of imagePublicIds) {
+  // معالجة متوازية للصور
+  const copyPromises = imagePublicIds.map(async (publicId) => {
     if (publicId && publicId.trim()) {
-      const result = await copyImageToOrderFolder(publicId, orderNumber);
-      results.push(result);
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      return await copyImageToOrderFolder(publicId, orderNumber);
     }
-  }
+    return null;
+  });
+
+  const copyResults = await Promise.allSettled(copyPromises);
+
+  copyResults.forEach((result) => {
+    if (result.status === "fulfilled" && result.value) {
+      results.push(result.value);
+    }
+  });
 
   return results;
 };
@@ -176,30 +184,37 @@ export const deleteOrderImages = async (orderNumber) => {
 
     const deleteResults = [];
 
-    for (const resource of searchResult.resources) {
+    // معالجة متوازية لحذف الصور
+    const deletePromises = searchResult.resources.map(async (resource) => {
       try {
         const deleteResult = await cloudinary.uploader.destroy(
           resource.public_id
         );
-        deleteResults.push({
+        return {
           publicId: resource.public_id,
           result: deleteResult.result,
           success: deleteResult.result === "ok",
           size: resource.bytes,
           format: resource.format,
-        });
+        };
       } catch (error) {
-        deleteResults.push({
+        return {
           publicId: resource.public_id,
           success: false,
           error: error.message,
           size: resource.bytes,
           format: resource.format,
-        });
+        };
       }
+    });
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
+    const deleteResultsArray = await Promise.allSettled(deletePromises);
+
+    deleteResultsArray.forEach((result) => {
+      if (result.status === "fulfilled") {
+        deleteResults.push(result.value);
+      }
+    });
 
     const successfulDeletes = deleteResults.filter((r) => r.success);
     const failedDeletes = deleteResults.filter((r) => !r.success);

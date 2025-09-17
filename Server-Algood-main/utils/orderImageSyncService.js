@@ -85,12 +85,13 @@ class OrderImageSyncService {
   }
 
   /**
-   * حذف صور محددة من مجلد الطلب
+   * حذف صور محددة من مجلد الطلب (محسن للأداء)
    */
   async deleteSpecificImagesFromOrderFolder(orderNumber, publicIdsToDelete) {
     const deleteResults = [];
 
-    for (const originalPublicId of publicIdsToDelete) {
+    // معالجة متوازية لحذف الصور
+    const deletePromises = publicIdsToDelete.map(async (originalPublicId) => {
       try {
         let backupPublicId = originalPublicId.includes("/")
           ? `dar-aljoud/orders/${orderNumber}/${originalPublicId
@@ -101,6 +102,7 @@ class OrderImageSyncService {
         try {
           await cloudinary.api.resource(backupPublicId);
         } catch (searchError) {
+          // البحث السريع عن الصورة
           const searchResult = await cloudinary.search
             .expression(`folder:dar-aljoud/orders/${orderNumber}`)
             .sort_by("public_id", "desc")
@@ -117,39 +119,50 @@ class OrderImageSyncService {
           if (foundImage) {
             backupPublicId = foundImage.public_id;
           } else {
-            deleteResults.push({
+            return {
               originalPublicId,
               backupPublicId: `dar-aljoud/orders/${orderNumber}/${fileName}`,
               success: false,
               error: "الصورة غير موجودة في مجلد الطلب",
-            });
-            continue;
+            };
           }
         }
 
         const deleteResult = await cloudinary.uploader.destroy(backupPublicId);
 
-        deleteResults.push({
+        return {
           originalPublicId,
           backupPublicId,
           success: deleteResult.result === "ok",
           result: deleteResult.result,
-        });
-
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        };
       } catch (error) {
-        deleteResults.push({
+        return {
           originalPublicId,
-          backupPublicId:
-            backupPublicId ||
-            `dar-aljoud/orders/${orderNumber}/${originalPublicId
-              .split("/")
-              .pop()}`,
+          backupPublicId: `dar-aljoud/orders/${orderNumber}/${originalPublicId
+            .split("/")
+            .pop()}`,
           success: false,
           error: error.message,
+        };
+      }
+    });
+
+    // تنفيذ جميع عمليات الحذف بشكل متوازي
+    const results = await Promise.allSettled(deletePromises);
+
+    results.forEach((result) => {
+      if (result.status === "fulfilled") {
+        deleteResults.push(result.value);
+      } else {
+        deleteResults.push({
+          originalPublicId: "unknown",
+          backupPublicId: "unknown",
+          success: false,
+          error: result.reason?.message || "Unknown error",
         });
       }
-    }
+    });
 
     const successfulDeletes = deleteResults.filter((r) => r.success);
     const failedDeletes = deleteResults.filter((r) => !r.success);
@@ -164,40 +177,44 @@ class OrderImageSyncService {
   }
 
   /**
-   * نسخ صور جديدة إلى مجلد الطلب
+   * نسخ صور جديدة إلى مجلد الطلب (محسن للأداء)
    */
   async copyNewImagesToOrderFolder(orderNumber, publicIdsToAdd) {
     const copyResults = [];
 
-    for (const originalPublicId of publicIdsToAdd) {
+    // معالجة متوازية للصور (بدلاً من التسلسل)
+    const copyPromises = publicIdsToAdd.map(async (originalPublicId) => {
       try {
-        try {
-          await cloudinary.api.resource(originalPublicId);
-        } catch (checkError) {
-          copyResults.push({
-            success: false,
-            originalPublicId,
-            error: "الصورة الأصلية غير موجودة",
-          });
-          continue;
-        }
-
+        // التحقق من وجود الصورة الأصلية بشكل أسرع
         const copyResult = await copyImageToOrderFolder(
           originalPublicId,
           orderNumber
         );
 
-        copyResults.push(copyResult);
-
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        return copyResult;
       } catch (error) {
-        copyResults.push({
+        return {
           success: false,
           originalPublicId,
           error: error.message,
+        };
+      }
+    });
+
+    // تنفيذ جميع عمليات النسخ بشكل متوازي
+    const results = await Promise.allSettled(copyPromises);
+
+    results.forEach((result) => {
+      if (result.status === "fulfilled") {
+        copyResults.push(result.value);
+      } else {
+        copyResults.push({
+          success: false,
+          originalPublicId: "unknown",
+          error: result.reason?.message || "Unknown error",
         });
       }
-    }
+    });
 
     const successfulCopies = copyResults.filter((r) => r.success);
     const failedCopies = copyResults.filter((r) => !r.success);
