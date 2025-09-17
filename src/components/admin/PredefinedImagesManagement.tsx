@@ -13,6 +13,7 @@ import {
   Save,
   Grid,
   Upload,
+  Eye,
 } from "lucide-react";
 import predefinedImagesService, {
   PredefinedImageData,
@@ -22,6 +23,7 @@ import CloudinaryImageUpload from "../../components/forms/CloudinaryImageUpload"
 import { CloudinaryImageData } from "../../services/imageUploadService";
 import ConfirmationModal from "../../components/ui/ConfirmationModal";
 import Modal from "../../components/ui/Modal";
+import ImageModal from "../../components/ui/ImageModal";
 import { useModal } from "../../hooks/useModal";
 
 const PredefinedImagesManagement: React.FC = () => {
@@ -31,7 +33,6 @@ const PredefinedImagesManagement: React.FC = () => {
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [selectedCategoryFilter, setSelectedCategoryFilter] =
     useState<string>("all");
-  const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [imagesError, setImagesError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
   const [newImageData, setNewImageData] = useState({
@@ -48,18 +49,20 @@ const PredefinedImagesManagement: React.FC = () => {
   const [nameError, setNameError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [selectedImageForView, setSelectedImageForView] = useState<string>("");
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const deleteImageModal = useModal();
   const editImageModal = useModal();
   const addImageModal = useModal();
   const confirmUploadModal = useModal();
+  const imageModal = useModal();
 
   useEffect(() => {
     loadPredefinedImagesAndCategories();
   }, []);
 
   const loadPredefinedImagesAndCategories = async () => {
-    setIsLoadingImages(true);
     setImagesError("");
     try {
       const data =
@@ -71,7 +74,7 @@ const PredefinedImagesManagement: React.FC = () => {
         error instanceof Error ? error.message : "فشل في تحميل البيانات"
       );
     } finally {
-      setIsLoadingImages(false);
+      setIsInitialLoad(false);
     }
   };
 
@@ -134,22 +137,26 @@ const PredefinedImagesManagement: React.FC = () => {
   const handleDeletePredefinedImage = async () => {
     if (!imageToDelete) return;
 
-    setIsLoadingImages(true);
+    // حذف فوري من الواجهة أولاً
+    setPredefinedImages((prev) =>
+      prev.filter((img) => img.id !== imageToDelete.id)
+    );
+    setSaveMessage("تم حذف الشعار الجاهز بنجاح");
+    setTimeout(() => setSaveMessage(""), 3000);
+
+    // إغلاق النافذة فوراً
+    setImageToDelete(null);
+    deleteImageModal.closeModal();
+
+    // الحذف من الخادم في الخلفية
     try {
       await predefinedImagesService.deletePredefinedImage(imageToDelete.id);
-      setPredefinedImages((prev) =>
-        prev.filter((img) => img.id !== imageToDelete.id)
-      );
-      setSaveMessage("تم حذف الشعار الجاهز بنجاح");
-      setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
+      // في حالة فشل الحذف من الخادم، إعادة الصورة للواجهة
+      setPredefinedImages((prev) => [...prev, imageToDelete]);
       setImagesError(
-        error instanceof Error ? error.message : "فشل في حذف الشعار الجاهز"
+        error instanceof Error ? error.message : "فشل في حذف الشعار من الخادم"
       );
-    } finally {
-      setIsLoadingImages(false);
-      setImageToDelete(null);
-      deleteImageModal.closeModal();
     }
   };
 
@@ -181,6 +188,11 @@ const PredefinedImagesManagement: React.FC = () => {
         error instanceof Error ? error.message : "فشل في تحديث الشعار"
       );
     }
+  };
+
+  const handleViewImage = (imageUrl: string) => {
+    setSelectedImageForView(imageUrl);
+    imageModal.openModal();
   };
 
   const formatFileSize = (bytes?: number): string => {
@@ -238,14 +250,9 @@ const PredefinedImagesManagement: React.FC = () => {
           </button>
           <button
             onClick={loadPredefinedImagesAndCategories}
-            disabled={isLoadingImages}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 text-sm"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all duration-200 text-sm"
           >
-            {isLoadingImages ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RotateCcw className="w-4 h-4" />
-            )}
+            <RotateCcw className="w-4 h-4" />
             تحديث
           </button>
         </div>
@@ -330,16 +337,7 @@ const PredefinedImagesManagement: React.FC = () => {
         </div>
       )}
 
-      {isLoadingImages ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-[#563660] mx-auto mb-4" />
-            <p className="text-gray-600 text-sm">
-              جاري تحميل الشعارات الجاهزة...
-            </p>
-          </div>
-        </div>
-      ) : filteredImages.length > 0 ? (
+      {!isInitialLoad && predefinedImages.length > 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -353,76 +351,92 @@ const PredefinedImagesManagement: React.FC = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {filteredImages.map((image, index) => (
-              <motion.div
-                key={image.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                className="relative group bg-gray-50 rounded-lg overflow-hidden hover:shadow-md transition-all duration-300 border border-gray-200"
-              >
-                <div className="aspect-square p-3">
-                  <img
-                    src={image.url}
-                    alt={image.name}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                  />
-                </div>
+          {filteredImages.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {filteredImages.map((image, index) => (
+                <motion.div
+                  key={image.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className="relative group bg-gray-50 rounded-lg overflow-hidden hover:shadow-md transition-all duration-300 border border-gray-200"
+                >
+                  <div className="aspect-square p-3">
+                    <img
+                      src={image.url}
+                      alt={image.name}
+                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      loading="eager"
+                      decoding="async"
+                      fetchPriority="high"
+                    />
+                  </div>
 
-                <div className="p-3 border-t border-gray-200 bg-white">
-                  <h4 className="text-sm font-medium text-gray-900 truncate mb-1">
-                    {image.name}
-                  </h4>
-                  <div className="flex items-center gap-1 mb-1">
-                    {image.category && (
-                      <>
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: image.category.color }}
-                        />
-                        <p className="text-xs text-gray-500 truncate">
-                          {image.category.name}
-                        </p>
-                      </>
+                  <div className="p-3 border-t border-gray-200 bg-white">
+                    <h4 className="text-sm font-medium text-gray-900 truncate mb-1">
+                      {image.name}
+                    </h4>
+                    <div className="flex items-center gap-1 mb-1">
+                      {image.category && (
+                        <>
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: image.category.color }}
+                          />
+                          <p className="text-xs text-gray-500 truncate">
+                            {image.category.name}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    {image.size && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        {formatFileSize(image.size)}
+                      </p>
                     )}
                   </div>
-                  {image.size && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {formatFileSize(image.size)}
-                    </p>
-                  )}
-                </div>
 
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <button
-                    onClick={() => {
-                      setSelectedImageForEdit(image);
-                      editImageModal.openModal();
-                    }}
-                    className="w-6 h-6 bg-blue-500 text-white rounded-md flex items-center justify-center hover:bg-blue-600 transition-colors"
-                    title="تعديل"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setImageToDelete(image);
-                      deleteImageModal.openModal();
-                    }}
-                    disabled={isLoadingImages}
-                    className="w-6 h-6 bg-red-500 text-white rounded-md flex items-center justify-center hover:bg-red-600 transition-colors disabled:opacity-50"
-                    title="حذف"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button
+                      onClick={() => handleViewImage(image.url)}
+                      className="w-6 h-6 bg-green-500 text-white rounded-md flex items-center justify-center hover:bg-green-600 transition-colors"
+                      title="عرض"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedImageForEdit(image);
+                        editImageModal.openModal();
+                      }}
+                      className="w-6 h-6 bg-blue-500 text-white rounded-md flex items-center justify-center hover:bg-blue-600 transition-colors"
+                      title="تعديل"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setImageToDelete(image);
+                        deleteImageModal.openModal();
+                      }}
+                      className="w-6 h-6 bg-red-500 text-white rounded-md flex items-center justify-center hover:bg-red-600 transition-colors"
+                      title="حذف"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 text-sm">
+                لا توجد شعارات في هذا التصنيف
+              </p>
+            </div>
+          )}
         </div>
-      ) : (
+      ) : !isInitialLoad ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -432,7 +446,7 @@ const PredefinedImagesManagement: React.FC = () => {
             ابدأ بإضافة شعارات جاهزة للمجموعة
           </p>
         </div>
-      )}
+      ) : null}
 
       <ConfirmationModal
         isOpen={deleteImageModal.isOpen}
@@ -446,7 +460,7 @@ const PredefinedImagesManagement: React.FC = () => {
         confirmText="نعم، احذف"
         cancelText="إلغاء"
         type="danger"
-        isLoading={isLoadingImages}
+        isLoading={false}
       />
 
       {/* نافذة رفع الشعار */}
@@ -537,6 +551,8 @@ const PredefinedImagesManagement: React.FC = () => {
                   src={uploadedImageData.url}
                   alt="الشعار المرفوع"
                   className="w-full h-full object-contain p-2"
+                  loading="eager"
+                  decoding="async"
                 />
               </div>
               <p className="text-xs text-gray-600">
@@ -688,6 +704,8 @@ const PredefinedImagesManagement: React.FC = () => {
                   src={selectedImageForEdit.url}
                   alt={selectedImageForEdit.name}
                   className="w-full h-full object-contain p-2"
+                  loading="eager"
+                  decoding="async"
                 />
               </div>
               <p className="text-xs text-gray-600">
@@ -773,6 +791,15 @@ const PredefinedImagesManagement: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      <ImageModal
+        isOpen={imageModal.isOpen}
+        shouldRender={imageModal.shouldRender}
+        onClose={imageModal.closeModal}
+        imageUrl={selectedImageForView}
+        showDownload={true}
+        showZoom={true}
+      />
     </div>
   );
 };
