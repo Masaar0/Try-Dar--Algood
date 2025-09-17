@@ -2,236 +2,16 @@ import cloudinary from "../config/cloudinary.js";
 import PredefinedImageSchema from "../models/schemas/PredefinedImageSchema.js";
 import CategoryModel from "../models/Category.js";
 
-// البيانات الافتراضية للشعارات الجاهزة
-const DEFAULT_PREDEFINED_IMAGES = [
-  {
-    id: "logo1",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078450/18_djpzcl.png",
-    publicId: "18_djpzcl",
-    name: "شعار 1",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo2",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078448/16_b1rjss.png",
-    publicId: "16_b1rjss",
-    name: "شعار 2",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo3",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078446/21_hq9kn2.png",
-    publicId: "21_hq9kn2",
-    name: "شعار 3",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo4",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078445/24_ryr2b7.png",
-    publicId: "24_ryr2b7",
-    name: "شعار 4",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo5",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078445/22_zdgy01.png",
-    publicId: "22_zdgy01",
-    name: "شعار 5",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo6",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078440/20_z76g1a.png",
-    publicId: "20_z76g1a",
-    name: "شعار 6",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo7",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078416/23_c30gr9.png",
-    publicId: "23_c30gr9",
-    name: "شعار 7",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo8",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078392/19_bsd1ci.png",
-    publicId: "19_bsd1ci",
-    name: "شعار 8",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo9",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078378/15_v4cfc5.png",
-    publicId: "15_v4cfc5",
-    name: "شعار 9",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo10",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078376/17_xeldqp.png",
-    publicId: "17_xeldqp",
-    name: "شعار 10",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo11",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078365/14_qqqwh1.png",
-    publicId: "14_qqqwh1",
-    name: "شعار 11",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo12",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078327/13_hwchwt.png",
-    publicId: "13_hwchwt",
-    name: "شعار 12",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo13",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078315/2_ecj1mj.png",
-    publicId: "2_ecj1mj",
-    name: "شعار 13",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo14",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078313/12_tg79xl.png",
-    publicId: "12_tg79xl",
-    name: "شعار 14",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo15",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078306/6_isqyzt.png",
-    publicId: "6_isqyzt",
-    name: "شعار 15",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo16",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078292/11_e4rp9f.png",
-    publicId: "11_e4rp9f",
-    name: "شعار 16",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo17",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078280/7_sdntzs.png",
-    publicId: "7_sdntzs",
-    name: "شعار 17",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo18",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078273/9_ckkfuc.png",
-    publicId: "9_ckkfuc",
-    name: "شعار 18",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo19",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078266/8_khcifj.png",
-    publicId: "8_khcifj",
-    name: "شعار 19",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo20",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078261/10_nt80mg.png",
-    publicId: "10_nt80mg",
-    name: "شعار 20",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo21",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078234/5_ivza7n.png",
-    publicId: "5_ivza7n",
-    name: "شعار 21",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo22",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078229/4_emla2u.png",
-    publicId: "4_emla2u",
-    name: "شعار 22",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo23",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078224/3_ohzsak.png",
-    publicId: "3_ohzsak",
-    name: "شعار 23",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-  {
-    id: "logo24",
-    url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078222/1_ucnpj9.png",
-    publicId: "1_ucnpj9",
-    name: "شعار 24",
-    categoryId: "logos",
-    description: "شعار جاهز للاستخدام",
-    updatedBy: "system",
-  },
-];
+// البيانات الافتراضية للشعارات الجاهزة - تم إزالة جميع الشعارات الافتراضية
+const DEFAULT_PREDEFINED_IMAGES = [];
 
 /**
- * تهيئة الشعارات الافتراضية
+ * تهيئة الشعارات الافتراضية - لا توجد شعارات افتراضية حالياً
  */
 export const initializeDefaultImages = async () => {
   try {
-    const existingCount = await PredefinedImageSchema.countDocuments();
-
-    if (existingCount === 0) {
-      await PredefinedImageSchema.insertMany(DEFAULT_PREDEFINED_IMAGES);
-    }
+    // لا توجد شعارات افتراضية للتهيئة حالياً
+    console.log("لا توجد شعارات افتراضية للتهيئة");
   } catch (error) {
     throw new Error("فشل في تهيئة الشعارات الجاهزة");
   }
@@ -493,29 +273,15 @@ export const resetPredefinedImages = async (req, res) => {
       });
     }
 
-    const updatedBy = req.admin?.username || "admin";
-
+    // حذف جميع الشعارات الموجودة
     await PredefinedImageSchema.deleteMany({});
 
-    const defaultImages = DEFAULT_PREDEFINED_IMAGES.map((img) => ({
-      ...img,
-      updatedAt: new Date(),
-      updatedBy,
-    }));
-
-    const insertedImages = await PredefinedImageSchema.insertMany(
-      defaultImages
-    );
-
-    const cleanImages = insertedImages.map((img) => ({
-      ...img.toObject(),
-      _id: undefined,
-    }));
-
+    // لا توجد شعارات افتراضية حالياً
     res.status(200).json({
       success: true,
-      message: "تم إعادة تعيين الشعارات الجاهزة إلى القيم الافتراضية بنجاح",
-      data: cleanImages,
+      message:
+        "تم حذف جميع الشعارات الجاهزة بنجاح - لا توجد شعارات افتراضية حالياً",
+      data: [],
     });
   } catch (error) {
     res.status(500).json({
