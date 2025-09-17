@@ -7,6 +7,7 @@ import PricingModel from "./models/Pricing.js";
 import { initializeDefaultImages } from "./controllers/predefinedImagesController.js";
 import { scheduleTemporaryLinkCleanup } from "./utils/temporaryLinkCleanup.js";
 import OrderCleanupService from "./utils/orderCleanupService.js";
+import AutoOrderCleanupService from "./utils/autoOrderCleanup.js";
 import uploadRoutes from "./routes/upload.js";
 import authRoutes from "./routes/auth.js";
 import pricingRoutes from "./routes/pricing.js";
@@ -87,6 +88,11 @@ app.get("/api/info", (req, res) => {
       addOrderNote: "POST /api/orders/:orderId/notes (requires auth)",
       getOrderStats: "GET /api/orders/stats (requires auth)",
       getOrderStatuses: "GET /api/orders/statuses",
+      getAutoCleanupStats: "GET /api/orders/auto-cleanup/stats (requires auth)",
+      manualCleanupExpiredOrders:
+        "POST /api/orders/auto-cleanup/manual (requires auth)",
+      controlAutoCleanupService:
+        "POST /api/orders/auto-cleanup/control (requires auth)",
       getCategories: "GET /api/categories",
       createCategory: "POST /api/categories (requires auth)",
       updateCategory: "PUT /api/categories/:categoryId (requires auth)",
@@ -113,6 +119,10 @@ app.get("/api/info", (req, res) => {
         "نظام مزامنة متقدم لإدارة صور الطلبات عند التعديل - يحذف الصور القديمة ويضيف الجديدة تلقائياً",
       imageSyncFeatures:
         "التحقق من تطابق الصور، الإصلاح التلقائي، وتقارير شاملة عن حالة صور جميع الطلبات",
+      autoCleanup:
+        "نظام حذف تلقائي للطلبات غير المؤكدة بعد 7 أيام - يشمل حذف شامل لجميع البيانات المرتبطة",
+      autoCleanupFeatures:
+        "فحص دوري كل ساعة، حذف يدوي، إحصائيات مفصلة، وتحكم كامل في الخدمة",
     },
   });
 });
@@ -158,6 +168,9 @@ const startServer = async () => {
     await initializeCloudinary();
     scheduleTemporaryLinkCleanup();
 
+    // بدء خدمة الحذف التلقائي للطلبات غير المؤكدة
+    AutoOrderCleanupService.start();
+
     app.listen(PORT, () => {});
   } catch (error) {
     process.exit(1);
@@ -167,6 +180,7 @@ const startServer = async () => {
 // معالجة إغلاق الخادم بشكل صحيح
 process.on("SIGTERM", async () => {
   try {
+    AutoOrderCleanupService.stop();
     const { disconnectDatabase } = await import("./config/database.js");
     await disconnectDatabase();
   } catch (error) {}
@@ -175,6 +189,7 @@ process.on("SIGTERM", async () => {
 
 process.on("SIGINT", async () => {
   try {
+    AutoOrderCleanupService.stop();
     const { disconnectDatabase } = await import("./config/database.js");
     await disconnectDatabase();
   } catch (error) {}

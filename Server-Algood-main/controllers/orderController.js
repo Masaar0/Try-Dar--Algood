@@ -3,6 +3,7 @@ import OrderImageManager from "../utils/orderImageManager.js";
 import TemporaryLinkModel from "../models/TemporaryLink.js";
 import OrderCleanupService from "../utils/orderCleanupService.js";
 import OrderImageSyncService from "../utils/orderImageSyncService.js";
+import AutoOrderCleanupService from "../utils/autoOrderCleanup.js";
 
 // إنشاء طلب جديد (عام - بدون مصادقة)
 export const createOrder = async (req, res) => {
@@ -772,6 +773,136 @@ export const getOrderStatuses = async (req, res) => {
       success: false,
       message: "حدث خطأ أثناء الحصول على حالات الطلب",
       error: "GET_STATUSES_FAILED",
+    });
+  }
+};
+
+// الحصول على إحصائيات خدمة الحذف التلقائي (يتطلب مصادقة المدير)
+export const getAutoCleanupStats = async (req, res) => {
+  try {
+    if (!req.admin || req.admin.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "غير مصرح لك بعرض إحصائيات الحذف التلقائي",
+        error: "INSUFFICIENT_PERMISSIONS",
+      });
+    }
+
+    const stats = await AutoOrderCleanupService.getCleanupStats();
+
+    res.status(200).json({
+      success: true,
+      message: "تم الحصول على إحصائيات الحذف التلقائي بنجاح",
+      data: stats,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء الحصول على إحصائيات الحذف التلقائي",
+      error: "GET_AUTO_CLEANUP_STATS_FAILED",
+    });
+  }
+};
+
+// تشغيل حذف يدوي للطلبات المنتهية الصلاحية (يتطلب مصادقة المدير)
+export const manualCleanupExpiredOrders = async (req, res) => {
+  try {
+    if (!req.admin || req.admin.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "غير مصرح لك بتشغيل الحذف اليدوي",
+        error: "INSUFFICIENT_PERMISSIONS",
+      });
+    }
+
+    const result = await AutoOrderCleanupService.manualCleanup();
+
+    res.status(200).json({
+      success: result.success,
+      message: result.message,
+      data: {
+        deletedCount: result.deletedCount,
+        totalFound: result.totalFound || 0,
+        errors: result.errors || [],
+        performedBy: req.admin.username,
+        performedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء تشغيل الحذف اليدوي",
+      error: "MANUAL_CLEANUP_FAILED",
+    });
+  }
+};
+
+// التحكم في خدمة الحذف التلقائي (يتطلب مصادقة المدير)
+export const controlAutoCleanupService = async (req, res) => {
+  try {
+    if (!req.admin || req.admin.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "غير مصرح لك بالتحكم في خدمة الحذف التلقائي",
+        error: "INSUFFICIENT_PERMISSIONS",
+      });
+    }
+
+    const { action } = req.body;
+
+    if (!action || !["start", "stop", "status"].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "الإجراء مطلوب ويجب أن يكون: start, stop, أو status",
+        error: "INVALID_ACTION",
+      });
+    }
+
+    let result = {};
+
+    switch (action) {
+      case "start":
+        AutoOrderCleanupService.start();
+        result = {
+          success: true,
+          message: "تم تشغيل خدمة الحذف التلقائي بنجاح",
+          isRunning: true,
+        };
+        break;
+
+      case "stop":
+        AutoOrderCleanupService.stop();
+        result = {
+          success: true,
+          message: "تم إيقاف خدمة الحذف التلقائي بنجاح",
+          isRunning: false,
+        };
+        break;
+
+      case "status":
+        const stats = await AutoOrderCleanupService.getCleanupStats();
+        result = {
+          success: true,
+          message: "تم الحصول على حالة خدمة الحذف التلقائي",
+          isRunning: stats.isRunning,
+          stats: stats,
+        };
+        break;
+    }
+
+    res.status(200).json({
+      ...result,
+      data: {
+        ...result,
+        controlledBy: req.admin.username,
+        controlledAt: new Date(),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء التحكم في خدمة الحذف التلقائي",
+      error: "CONTROL_AUTO_CLEANUP_FAILED",
     });
   }
 };

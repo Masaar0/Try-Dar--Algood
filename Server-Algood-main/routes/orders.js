@@ -14,6 +14,9 @@ import {
   validateOrderImageSync,
   autoFixOrderImageSync,
   getOrderImagesReport,
+  getAutoCleanupStats,
+  manualCleanupExpiredOrders,
+  controlAutoCleanupService,
 } from "../controllers/orderController.js";
 import { authenticateAdmin } from "../middleware/auth.js";
 import { generalRateLimit } from "../middleware/security.js";
@@ -43,6 +46,19 @@ router.get(
 );
 router.post("/:orderId/images/fix", authenticateAdmin, autoFixOrderImageSync);
 router.get("/images/report", authenticateAdmin, getOrderImagesReport);
+
+// مسارات إدارة الحذف التلقائي للطلبات
+router.get("/auto-cleanup/stats", authenticateAdmin, getAutoCleanupStats);
+router.post(
+  "/auto-cleanup/manual",
+  authenticateAdmin,
+  manualCleanupExpiredOrders
+);
+router.post(
+  "/auto-cleanup/control",
+  authenticateAdmin,
+  controlAutoCleanupService
+);
 
 // معالج الأخطاء للمسارات
 router.use((error, req, res, next) => {
