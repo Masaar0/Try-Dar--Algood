@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -24,6 +25,7 @@ import {
   LinkIcon,
   Copy,
   X,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import orderService, {
@@ -70,6 +72,8 @@ const OrdersManagement: React.FC = () => {
   const [statusNote, setStatusNote] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isConfirmingOrder, setIsConfirmingOrder] = useState(false);
+  // ✨ إضافة حالة جديدة لإظهار/إخفاء الفلاتر
+  const [showFilters, setShowFilters] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"confirmed" | "pending">(
     "confirmed"
@@ -261,7 +265,7 @@ const OrdersManagement: React.FC = () => {
         -webkit-overflow-scrolling: touch !important;
       }
     }
-  `;
+    `;
 
     const style = document.createElement("style");
     style.textContent = mobileScrollStyles;
@@ -625,7 +629,6 @@ const OrdersManagement: React.FC = () => {
     };
 
     initializeData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Load once on component mount
 
   // Reload data when page changes (with cache)
@@ -633,14 +636,12 @@ const OrdersManagement: React.FC = () => {
     if (activeTab === "confirmed") {
       loadOrders();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, statusFilter]);
 
   useEffect(() => {
     if (activeTab === "pending") {
       loadPendingOrders();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCurrentPage]);
 
   const handleTabSwitch = (tab: "confirmed" | "pending") => {
@@ -702,10 +703,11 @@ const OrdersManagement: React.FC = () => {
     }
   }, [activeTab, loadOrders, loadPendingOrders]);
 
-  // مسح البحث عند تغيير التبويب
+  // مسح البحث والفلترة عند تغيير التبويب
   useEffect(() => {
     setSearchTerm("");
     setHasActiveSearch(false); // إعادة تعيين حالة البحث النشط
+    setShowFilters(false); // إخفاء الفلاتر عند التبديل
   }, [activeTab]);
 
   // إلغاء البحث التلقائي عند مسح كل شيء من حقل البحث
@@ -1243,30 +1245,28 @@ const OrdersManagement: React.FC = () => {
 
       {/* Search and Filter Tools - متجاوبة */}
       <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4">
-        <div className="flex flex-col gap-3 sm:gap-4">
-          {/* شريط البحث مع الأزرار */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="ابحث برقم الطلب، رمز التتبع، اسم العميل..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      // قطع المسافات من النص قبل البحث
-                      setSearchTerm(searchTerm.trim());
-                      handleSearch();
-                    }
-                  }}
-                  className="w-full pr-10 pl-3 py-2.5 sm:py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm"
-                />
-              </div>
+        {/* شريط البحث وزر الفلترة */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="ابحث برقم الطلب، رمز التتبع، اسم العميل..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    setSearchTerm(searchTerm.trim());
+                    handleSearch();
+                  }
+                }}
+                className="w-full pr-10 pl-3 py-2.5 sm:py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm"
+              />
             </div>
-
-            {/* أزرار البحث والإلغاء */}
+          </div>
+          <div className="flex gap-2 items-center">
+            {/* زر البحث */}
             <button
               onClick={handleSearch}
               disabled={isLoading || isLoadingPending}
@@ -1276,7 +1276,17 @@ const OrdersManagement: React.FC = () => {
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">بحث</span>
             </button>
-
+            {/* زر إظهار الفلاتر - يظهر فقط في الطلبات المؤكدة */}
+            {activeTab === "confirmed" && (
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center justify-center gap-1 px-3 py-2.5 sm:px-4 sm:py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-all duration-200 text-sm flex-shrink-0"
+                title="خيارات الفلترة"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="hidden sm:inline">فلترة</span>
+              </button>
+            )}
             {/* زر إلغاء الفلترة - يظهر فقط عند وجود بحث أو فلترة نشطة */}
             {(searchTerm.trim() || statusFilter) && (
               <button
@@ -1290,27 +1300,63 @@ const OrdersManagement: React.FC = () => {
               </button>
             )}
           </div>
-
-          {/* فلترة الحالات */}
-          {activeTab === "confirmed" && (
-            <div className="flex-1 sm:flex-none">
-              <select
-                value={statusFilter}
-                onChange={(e) => handleStatusFilterChange(e.target.value)}
-                className="w-full px-3 py-2.5 sm:py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm"
-              >
-                <option value="">جميع الحالات</option>
-                {orderStatuses
-                  .filter((status) => status.value !== "pending")
-                  .map((status) => (
-                    <option key={status.value} value={status.value}>
-                      {status.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
         </div>
+
+        {/* ✨ قائمة الفلاتر المتحركة */}
+        <AnimatePresence>
+          {showFilters && activeTab === "confirmed" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, y: -10 }}
+              animate={{ opacity: 1, height: "auto", y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="mt-4 overflow-hidden"
+            >
+              <div className="relative p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-[#563660]" />
+                  تصفية حسب الحالة
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                  <button
+                    onClick={() => handleStatusFilterChange("")}
+                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm whitespace-nowrap ${
+                      statusFilter === ""
+                        ? "bg-[#563660] text-white shadow-sm"
+                        : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Search className="w-3 h-3" />
+                    جميع الحالات
+                  </button>
+                  {orderStatuses
+                    .filter((status) => status.value !== "pending")
+                    .map((status) => (
+                      <button
+                        key={status.value}
+                        onClick={() => handleStatusFilterChange(status.value)}
+                        className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm whitespace-nowrap ${
+                          statusFilter === status.value
+                            ? "bg-[#563660] text-white shadow-sm"
+                            : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        {status.value === "confirmed" && "✅ "}
+                        {status.value === "in_production" && "⚙️ "}
+                        {status.value === "quality_check" && "🔍 "}
+                        {status.value === "ready_to_ship" && "📦 "}
+                        {status.value === "shipped" && "🚚 "}
+                        {status.value === "delivered" && "✔️ "}
+                        {status.value === "cancelled" && "❌ "}
+                        {status.value === "returned" && "🔄 "}
+                        {status.name}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Error Display */}
