@@ -93,7 +93,13 @@ export const useOrdersCache = () => {
       search: string,
       includePending: boolean,
       data: OrderData[],
-      pagination: any
+      pagination: {
+        currentPage: number;
+        totalPages: number;
+        totalOrders: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+      }
     ) => {
       const key = createCacheKey(page, limit, status, search, includePending);
 

@@ -390,7 +390,7 @@ const TemporaryOrderEditContent: React.FC = () => {
                   | "chestLeft"
                   | "backBottom",
               })),
-              // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
+              currentView: "front" as const,
               totalPrice: item.jacketConfig.totalPrice,
               isCapturing: false,
               uploadedImages: item.jacketConfig.uploadedImages || [],

@@ -42,7 +42,7 @@ const Header: React.FC = () => {
       try {
         const isValid = await authService.verifySession();
         setIsAdminAuthenticated(isValid);
-      } catch (error) {
+      } catch {
         setIsAdminAuthenticated(false);
       }
     };
