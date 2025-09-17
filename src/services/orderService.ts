@@ -37,7 +37,7 @@ export interface JacketConfig {
       color?: string;
     }>;
   }>;
-  currentView: string;
+  // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
   totalPrice: number;
   isCapturing: boolean;
   uploadedImages: Array<{

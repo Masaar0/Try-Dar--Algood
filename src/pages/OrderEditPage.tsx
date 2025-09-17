@@ -90,7 +90,10 @@ const OrderEditContent: React.FC = () => {
     // مسح بيانات التعديل السابقة إذا كانت موجودة
     localStorage.removeItem("orderEditJacketState");
     localStorage.removeItem("orderEditCart");
-  }, []);
+
+    // ضمان البدء بالموضع الأمامي في صفحة التعديل
+    setCurrentView("front");
+  }, [setCurrentView]);
 
   const loadOrderData = useCallback(async () => {
     // منع التحميل المتكرر
@@ -197,10 +200,8 @@ const OrderEditContent: React.FC = () => {
           });
         });
 
-        // تعيين العرض الحالي
-        setCurrentView(
-          jacketConfig.currentView as "front" | "back" | "right" | "left"
-        );
+        // تعيين العرض الحالي - دائماً نبدأ بالموضع الأمامي في صفحات التعديل
+        setCurrentView("front");
       }
 
       setIsDataLoaded(true);
@@ -358,11 +359,7 @@ const OrderEditContent: React.FC = () => {
                   | "chestLeft"
                   | "backBottom",
               })),
-              currentView: item.jacketConfig.currentView as
-                | "front"
-                | "back"
-                | "right"
-                | "left",
+              // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
               totalPrice: item.jacketConfig.totalPrice,
               isCapturing: false,
               uploadedImages: item.jacketConfig.uploadedImages || [],

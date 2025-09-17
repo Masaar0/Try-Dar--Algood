@@ -75,7 +75,7 @@ export const cleanupJacketData = (jacketConfig: {
   size: string;
   logos: Logo[];
   texts: CustomText[];
-  currentView: string;
+  // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
   totalPrice: number;
   isCapturing?: boolean;
   uploadedImages?: Array<{

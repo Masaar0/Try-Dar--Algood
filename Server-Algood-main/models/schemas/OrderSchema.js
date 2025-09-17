@@ -105,12 +105,7 @@ const jacketConfigSchema = new mongoose.Schema(
     },
     logos: [logoSchema],
     texts: [textSchema],
-    currentView: {
-      type: String,
-      required: true,
-      default: "front",
-      enum: ["front", "back", "right", "left"],
-    },
+    // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
     totalPrice: { type: Number, required: true, default: 220 },
     isCapturing: { type: Boolean, default: false },
     uploadedImages: [uploadedImageSchema],

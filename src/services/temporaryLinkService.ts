@@ -91,7 +91,7 @@ export interface TemporaryOrderData {
             color?: string;
           }>;
         }>;
-        currentView: string;
+        // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
         totalPrice: number;
         isCapturing: boolean;
         uploadedImages: Array<{
@@ -310,7 +310,7 @@ class TemporaryLinkService {
             color?: string;
           }>;
         }>;
-        currentView: string;
+        // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
         totalPrice: number;
         isCapturing: boolean;
         uploadedImages: Array<{
