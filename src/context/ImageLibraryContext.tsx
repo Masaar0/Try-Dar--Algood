@@ -86,7 +86,6 @@ interface ImageLibraryContextType {
   isImageSelected: (imageId: string) => boolean;
 
   // حالة التحميل
-  isLoading: boolean;
   error: string | null;
 
   // وظائف مزامنة التصميم
@@ -153,7 +152,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     return [];
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // استخدام hook منفصل للحصول على JacketContext
@@ -209,7 +207,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
   };
   // تحميل الصور الجاهزة من الباك إند
   const loadPredefinedImages = async () => {
-    setIsLoading(true);
     setError(null);
 
     try {
@@ -223,8 +220,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
       setPredefinedImages([]);
       setCategories([]);
       setError(null); // لا نعرض رسالة خطأ
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -235,7 +230,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
     categoryId: string,
     description?: string
   ) => {
-    setIsLoading(true);
     setError(null);
 
     try {
@@ -252,14 +246,11 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
         error instanceof Error ? error.message : "فشل في إضافة الشعار الجاهز"
       );
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // حذف شعار جاهز
   const deletePredefinedImage = async (imageId: string) => {
-    setIsLoading(true);
     setError(null);
 
     try {
@@ -282,8 +273,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
         error instanceof Error ? error.message : "فشل في حذف الشعار الجاهز"
       );
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -292,7 +281,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
     imageId: string,
     updates: { name?: string; categoryId?: string; description?: string }
   ) => {
-    setIsLoading(true);
     setError(null);
 
     try {
@@ -315,14 +303,11 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
         error instanceof Error ? error.message : "فشل في تحديث الشعار الجاهز"
       );
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // تحميل التصنيفات
   const loadCategories = async () => {
-    setIsLoading(true);
     setError(null);
 
     try {
@@ -333,8 +318,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
       setError(
         error instanceof Error ? error.message : "فشل في تحميل التصنيفات"
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -345,7 +328,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
     color?: string;
     icon?: string;
   }) => {
-    setIsLoading(true);
     setError(null);
 
     try {
@@ -363,8 +345,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("Error creating category:", error);
       setError(error instanceof Error ? error.message : "فشل في إنشاء التصنيف");
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -378,7 +358,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
       icon?: string;
     }
   ) => {
-    setIsLoading(true);
     setError(null);
 
     try {
@@ -397,14 +376,11 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("Error updating category:", error);
       setError(error instanceof Error ? error.message : "فشل في تحديث التصنيف");
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // حذف تصنيف
   const deleteCategory = async (categoryId: string) => {
-    setIsLoading(true);
     setError(null);
 
     try {
@@ -436,8 +412,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("Error deleting category:", error);
       setError(error instanceof Error ? error.message : "فشل في حذف التصنيف");
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -557,7 +531,6 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
         unselectImage,
         clearSelectedImages,
         isImageSelected,
-        isLoading,
         error,
         removeImageFromDesign,
       }}

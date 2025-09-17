@@ -42,7 +42,6 @@ const ImageLibraryPage: React.FC = () => {
     addUserImage,
     removeUserImage,
     loadPredefinedImages,
-    isLoading,
     error,
   } = useImageLibrary();
 
@@ -56,7 +55,9 @@ const ImageLibraryPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showSelectedSidebar, setShowSelectedSidebar] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedUserImages, setSelectedUserImages] = useState<Set<string>>(new Set());
+  const [selectedUserImages, setSelectedUserImages] = useState<Set<string>>(
+    new Set()
+  );
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isDeletingMultiple, setIsDeletingMultiple] = useState(false);
 
@@ -104,27 +105,32 @@ const ImageLibraryPage: React.FC = () => {
   };
   useEffect(() => {
     const preloadVisibleImages = async () => {
-      const visiblePredefined = predefinedImages.slice(0, 12);
+      // تحميل الصور المرئية فقط (أول 20 صورة)
+      const visiblePredefined = predefinedImages.slice(0, 20);
+
+      // تحميل الصور بشكل متوازي مع أولوية للصور الأولى
       const preloadPromises = visiblePredefined.map((image, index) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.loading = "eager";
-        img.decoding = index < 6 ? "sync" : "async";
-        img.fetchPriority = index < 6 ? "high" : "auto";
-        img.src = image.url;
-        return img;
+        return new Promise<void>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.loading = "eager";
+          img.decoding = index < 10 ? "sync" : "async";
+          img.fetchPriority = index < 10 ? "high" : "auto";
+
+          // تحسين URL للصور لتحميل أسرع
+          const optimizedUrl = image.url.includes("upload/")
+            ? image.url.replace("upload/", "upload/q_auto,f_auto,w_300,h_300/")
+            : image.url;
+
+          img.src = optimizedUrl;
+
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+        });
       });
 
-      await Promise.allSettled(
-        preloadPromises.map((img) => {
-          return new Promise((resolve) => {
-            img.onload = resolve;
-            img.onerror = resolve;
-            img.onload = () => resolve; // Fix for strict mode
-            img.onerror = () => resolve; // Fix for strict mode
-          });
-        })
-      );
+      // تحميل الصور بشكل متوازي
+      await Promise.allSettled(preloadPromises);
     };
 
     if (predefinedImages.length > 0) {
@@ -173,7 +179,7 @@ const ImageLibraryPage: React.FC = () => {
   };
 
   const handleToggleImageSelection = (publicId: string) => {
-    setSelectedUserImages(prev => {
+    setSelectedUserImages((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(publicId)) {
         newSet.delete(publicId);
@@ -188,7 +194,9 @@ const ImageLibraryPage: React.FC = () => {
     if (selectedUserImages.size === filteredUserImages.length) {
       setSelectedUserImages(new Set());
     } else {
-      setSelectedUserImages(new Set(filteredUserImages.map(img => img.publicId)));
+      setSelectedUserImages(
+        new Set(filteredUserImages.map((img) => img.publicId))
+      );
     }
   };
 
@@ -198,15 +206,15 @@ const ImageLibraryPage: React.FC = () => {
     setIsDeletingMultiple(true);
     try {
       const imagesToDelete = Array.from(selectedUserImages);
-      
+
       // حذف الصور من localStorage فقط (لا نحذف من Cloudinary)
-      imagesToDelete.forEach(publicId => {
+      imagesToDelete.forEach((publicId) => {
         removeUserImage(publicId);
       });
 
       setSelectedUserImages(new Set());
       setIsSelectionMode(false);
-      
+
       console.log(`Removed ${imagesToDelete.length} images from localStorage`);
     } catch (error) {
       console.error("Error deleting selected images:", error);
@@ -221,14 +229,14 @@ const ImageLibraryPage: React.FC = () => {
     setIsDeletingMultiple(true);
     try {
       // حذف جميع الصور من localStorage فقط
-      const allImageIds = userImages.map(img => img.publicId);
-      allImageIds.forEach(publicId => {
+      const allImageIds = userImages.map((img) => img.publicId);
+      allImageIds.forEach((publicId) => {
         removeUserImage(publicId);
       });
 
       setSelectedUserImages(new Set());
       setIsSelectionMode(false);
-      
+
       console.log(`Removed all ${allImageIds.length} images from localStorage`);
     } catch (error) {
       console.error("Error deleting all images:", error);
@@ -446,14 +454,7 @@ const ImageLibraryPage: React.FC = () => {
             <AnimatePresence mode="wait">
               {activeTab === "predefined" && (
                 <div key="predefined">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-12 sm:py-20">
-                      <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-[#563660]" />
-                      <span className="mr-2 sm:mr-3 text-sm sm:text-base text-gray-600">
-                        جاري تحميل الصور...
-                      </span>
-                    </div>
-                  ) : error ? (
+                  {error ? (
                     <div className="text-center py-12 sm:py-20">
                       <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12 text-red-500 mx-auto mb-4" />
                       <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
@@ -491,7 +492,8 @@ const ImageLibraryPage: React.FC = () => {
                               src={image.url}
                               alt={image.name}
                               className="w-full h-full object-contain"
-                              loading="lazy"
+                              loading="eager"
+                              decoding="async"
                             />
                           </div>
 
@@ -630,7 +632,7 @@ const ImageLibraryPage: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          
+
                           <div className="flex gap-2 w-full sm:w-auto">
                             {!isSelectionMode ? (
                               <>
@@ -656,7 +658,8 @@ const ImageLibraryPage: React.FC = () => {
                                   onClick={handleSelectAllUserImages}
                                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
                                 >
-                                  {selectedUserImages.size === filteredUserImages.length ? (
+                                  {selectedUserImages.size ===
+                                  filteredUserImages.length ? (
                                     <>
                                       <X className="w-4 h-4" />
                                       إلغاء التحديد
@@ -714,7 +717,8 @@ const ImageLibraryPage: React.FC = () => {
                                 src={image.url}
                                 alt={image.publicId}
                                 className="w-full h-full object-contain"
-                                loading="lazy"
+                                loading="eager"
+                                decoding="async"
                               />
                             </div>
 
@@ -726,70 +730,70 @@ const ImageLibraryPage: React.FC = () => {
                                 <span>{image.format.toUpperCase()}</span>
                                 <span>{formatFileSize(image.size)}</span>
                               </div>
-                            {!isSelectionMode && (
-                              <div className="absolute top-1 sm:top-2 right-1 sm:right-2">
-                                <button
-                                  onClick={() =>
-                                    handleImageSelect(image, "user")
-                                  }
-                                  className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                    isImageSelected(image.publicId)
-                                      ? "bg-[#563660] border-[#563660] text-white"
-                                      : "bg-white border-gray-300 hover:border-[#563660]"
-                                  }`}
-                                >
-                                  {isImageSelected(image.publicId) && (
-                                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                                  )}
-                                </button>
-                              </div>
-                            )}
-
-                            {isSelectionMode && (
-                              <div className="absolute top-1 sm:top-2 right-1 sm:right-2">
-                                <div
-                                  className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                    selectedUserImages.has(image.publicId)
-                                      ? "bg-blue-600 border-blue-600 text-white"
-                                      : "bg-white border-gray-300"
-                                  }`}
-                                >
-                                  {selectedUserImages.has(image.publicId) && (
-                                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                                  )}
+                              {!isSelectionMode && (
+                                <div className="absolute top-1 sm:top-2 right-1 sm:right-2">
+                                  <button
+                                    onClick={() =>
+                                      handleImageSelect(image, "user")
+                                    }
+                                    className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                      isImageSelected(image.publicId)
+                                        ? "bg-[#563660] border-[#563660] text-white"
+                                        : "bg-white border-gray-300 hover:border-[#563660]"
+                                    }`}
+                                  >
+                                    {isImageSelected(image.publicId) && (
+                                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                                    )}
+                                  </button>
                                 </div>
-                              </div>
-                            )}
+                              )}
 
-                            {!isSelectionMode && (
-                              <div className="absolute top-1 sm:top-2 left-1 sm:left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewImage(image.url);
-                                  }}
-                                  className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
-                                  title="عرض"
-                                >
-                                  <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteUserImage(image);
-                                  }}
-                                  disabled={isDeleting === image.publicId}
-                                  className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors disabled:opacity-50"
-                                  title="حذف من الخادم"
-                                >
-                                  {isDeleting === image.publicId ? (
-                                    <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                                  )}
-                                </button>
-                              </div>
-                            )}
+                              {isSelectionMode && (
+                                <div className="absolute top-1 sm:top-2 right-1 sm:right-2">
+                                  <div
+                                    className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                      selectedUserImages.has(image.publicId)
+                                        ? "bg-blue-600 border-blue-600 text-white"
+                                        : "bg-white border-gray-300"
+                                    }`}
+                                  >
+                                    {selectedUserImages.has(image.publicId) && (
+                                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {!isSelectionMode && (
+                                <div className="absolute top-1 sm:top-2 left-1 sm:left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewImage(image.url);
+                                    }}
+                                    className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
+                                    title="عرض"
+                                  >
+                                    <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteUserImage(image);
+                                    }}
+                                    disabled={isDeleting === image.publicId}
+                                    className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors disabled:opacity-50"
+                                    title="حذف من الخادم"
+                                  >
+                                    {isDeleting === image.publicId ? (
+                                      <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                    )}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -869,36 +873,6 @@ const ImageLibraryPage: React.FC = () => {
                   </button>
                 </div>
               )}
-
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">
-                  إحصائيات
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">الشعارات الجاهزة:</span>
-                    <span className="font-medium">
-                      {predefinedImages.length}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">صوري:</span>
-                    <span className="font-medium">{userImages.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">المحددة:</span>
-                    <span className="font-medium text-[#563660]">
-                      {selectedImages.length}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">تصنيف:</span>
-                    <span className="font-medium">
-                      {categories.length}
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -988,38 +962,6 @@ const ImageLibraryPage: React.FC = () => {
                     </div>
                   </>
                 )}
-
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">
-                    إحصائيات
-                  </h4>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-gray-50 rounded-lg p-2">
-                      <div className="text-sm font-bold text-[#563660]">
-                        {predefinedImages.length}
-                      </div>
-                      <div className="text-xs text-gray-600">جاهزة</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-2">
-                      <div className="text-sm font-bold text-[#563660]">
-                        {userImages.length}
-                      </div>
-                      <div className="text-xs text-gray-600">صوري</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-2">
-                      <div className="text-sm font-bold text-[#563660]">
-                        {selectedImages.length}
-                      </div>
-                      <div className="text-xs text-gray-600">محددة</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-2">
-                      <div className="text-sm font-bold text-[#563660]">
-                        {categories.length}
-                      </div>
-                      <div className="text-xs text-gray-600">تصنيف</div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           )}
