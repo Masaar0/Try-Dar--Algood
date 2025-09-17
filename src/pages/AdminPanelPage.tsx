@@ -191,8 +191,9 @@ const AdminPanelPage: React.FC = () => {
                           username: e.target.value,
                         }))
                       }
-                      className="w-full pr-10 pl-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm"
+                      className="w-full pr-10 pl-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm text-left placeholder:text-right"
                       placeholder="أدخل اسم المستخدم"
+                      dir="ltr"
                       required
                     />
                   </div>
@@ -213,8 +214,9 @@ const AdminPanelPage: React.FC = () => {
                           password: e.target.value,
                         }))
                       }
-                      className="w-full pr-10 pl-10 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm"
+                      className="w-full pr-10 pl-10 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all text-sm text-left placeholder:text-right"
                       placeholder="أدخل كلمة المرور"
+                      dir="ltr"
                       required
                     />
                     <button
