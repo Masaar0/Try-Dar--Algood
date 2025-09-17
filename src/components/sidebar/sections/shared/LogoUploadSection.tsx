@@ -63,123 +63,13 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
   const availableLogos = [
     {
       id: "logo1",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078450/18_djpzcl.png",
+      url: "https://res.cloudinary.com/dzqdifkzy/image/upload/v1757633219/dar-aljoud/predefined-logos/ut5xnsnpctgsza9rzl6a.png",
       name: "شعار 1",
     },
     {
-      id: "logo2",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078448/16_b1rjss.png",
+      id: "logo",
+      url: "https://res.cloudinary.com/dzqdifkzy/image/upload/v1757632863/dar-aljoud/predefined-logos/veebfqv88qftcpjdghox.png",
       name: "شعار 2",
-    },
-    {
-      id: "logo3",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078446/21_hq9kn2.png",
-      name: "شعار 3",
-    },
-    {
-      id: "logo4",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078445/24_ryr2b7.png",
-      name: "شعار 4",
-    },
-    {
-      id: "logo5",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078445/22_zdgy01.png",
-      name: "شعار 5",
-    },
-    {
-      id: "logo6",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078440/20_z76g1a.png",
-      name: "شعار 6",
-    },
-    {
-      id: "logo7",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078416/23_c30gr9.png",
-      name: "شعار 7",
-    },
-    {
-      id: "logo8",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078392/19_bsd1ci.png",
-      name: "شعار 8",
-    },
-    {
-      id: "logo9",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078378/15_v4cfc5.png",
-      name: "شعار 9",
-    },
-    {
-      id: "logo10",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078376/17_xeldqp.png",
-      name: "شعار 10",
-    },
-    {
-      id: "logo11",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078365/14_qqqwh1.png",
-      name: "شعار 11",
-    },
-    {
-      id: "logo12",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078327/13_hwchwt.png",
-      name: "شعار 12",
-    },
-    {
-      id: "logo13",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078315/2_ecj1mj.png",
-      name: "شعار 13",
-    },
-    {
-      id: "logo14",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078313/12_tg79xl.png",
-      name: "شعار 14",
-    },
-    {
-      id: "logo15",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078306/6_isqyzt.png",
-      name: "شعار 15",
-    },
-    {
-      id: "logo16",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078292/11_e4rp9f.png",
-      name: "شعار 16",
-    },
-    {
-      id: "logo17",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078280/7_sdntzs.png",
-      name: "شعار 17",
-    },
-    {
-      id: "logo18",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078273/9_ckkfuc.png",
-      name: "شعار 18",
-    },
-    {
-      id: "logo19",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078266/8_khcifj.png",
-      name: "شعار 19",
-    },
-    {
-      id: "logo20",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078261/10_nt80mg.png",
-      name: "شعار 20",
-    },
-    {
-      id: "logo21",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078234/5_ivza7n.png",
-      name: "شعار 21",
-    },
-    {
-      id: "logo22",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078229/4_emla2u.png",
-      name: "شعار 22",
-    },
-    {
-      id: "logo23",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078224/3_ohzsak.png",
-      name: "شعار 23",
-    },
-    {
-      id: "logo24",
-      url: "https://res.cloudinary.com/dnuthlqsb/image/upload/v1755078222/1_ucnpj9.png",
-      name: "شعار 24",
     },
   ];
 
