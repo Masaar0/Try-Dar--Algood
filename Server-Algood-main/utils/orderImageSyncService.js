@@ -261,8 +261,8 @@ class OrderImageSyncService {
         startTime: new Date(),
       });
 
-      const orders = await OrderModel.getOrders();
-      const order = orders.find((o) => o.id === orderId);
+      // تحسين الأداء: البحث مباشرة عن الطلب بدلاً من جلب جميع الطلبات
+      const order = await OrderModel.getOrderById(orderId);
 
       if (!order) {
         throw new Error("الطلب غير موجود");
@@ -461,8 +461,8 @@ class OrderImageSyncService {
    */
   async validateOrderFolderSync(orderId) {
     try {
-      const orders = await OrderModel.getOrders();
-      const order = orders.find((o) => o.id === orderId);
+      // تحسين الأداء: البحث مباشرة عن الطلب بدلاً من جلب جميع الطلبات
+      const order = await OrderModel.getOrderById(orderId);
 
       if (!order) {
         throw new Error("الطلب غير موجود");
@@ -621,7 +621,13 @@ class OrderImageSyncService {
    */
   async generateOrderImagesReport() {
     try {
-      const orders = await OrderModel.getOrders();
+      // تحسين الأداء: استخدام التصفح التدريجي للحصول على جميع الطلبات
+      const result = await OrderModel.getOrdersPaginated({
+        page: 1,
+        limit: 1000, // عدد كبير للحصول على جميع الطلبات
+        includePending: true,
+      });
+      const orders = result.orders;
       const report = {
         totalOrders: orders.length,
         checkedOrders: 0,

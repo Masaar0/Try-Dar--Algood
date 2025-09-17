@@ -324,9 +324,50 @@ if (response.status === 404) {
 6. **جرب الدخول إلى صفحة التعديل عبر الرابط المؤقت** (يجب أن يعمل الآن بدون أخطاء)
 7. تأكد من أن التحقق من الرابط المؤقت يعمل بشكل صحيح
 
+### 9. إصلاح مشاكل الأداء في orderImageSyncService.js
+
+**المشكلة المكتشفة:**
+
+- استخدام `getOrders()` في 3 أماكن مختلفة في `orderImageSyncService.js`
+- جلب جميع الطلبات ثم البحث عن طلب واحد
+
+**الحل المطبق:**
+
+```javascript
+// إصلاح المكان الأول - syncOrderImages
+// قبل الإصلاح
+const orders = await OrderModel.getOrders();
+const order = orders.find((o) => o.id === orderId);
+
+// بعد الإصلاح
+const order = await OrderModel.getOrderById(orderId);
+
+// إصلاح المكان الثاني - validateOrderFolderSync
+// قبل الإصلاح
+const orders = await OrderModel.getOrders();
+const order = orders.find((o) => o.id === orderId);
+
+// بعد الإصلاح
+const order = await OrderModel.getOrderById(orderId);
+
+// إصلاح المكان الثالث - generateOrderImagesReport
+// قبل الإصلاح
+const orders = await OrderModel.getOrders();
+
+// بعد الإصلاح
+const result = await OrderModel.getOrdersPaginated({
+  page: 1,
+  limit: 1000, // عدد كبير للحصول على جميع الطلبات
+  includePending: true,
+});
+const orders = result.orders;
+```
+
 ## ملاحظات إضافية
 
 - **تم إصلاح خطأ 500** في التحقق من الرابط المؤقت
 - **تحسين جميع دوال التحقق** من الرابط المؤقت في الكنترولر
 - **إضافة timeout** لطلبات التحقق من الرابط المؤقت
 - **تحسين رسائل الخطأ** لتكون أكثر وضوحاً للمستخدم
+- **إصلاح مشاكل الأداء** في `orderImageSyncService.js`
+- **تم فحص الموقع بالكامل** ولم يتم العثور على مشاكل أداء أخرى
