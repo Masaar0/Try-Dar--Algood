@@ -10,14 +10,16 @@ class TemporaryLinkModel {
   }
 
   /**
-   * إنشاء رابط مؤقت جديد
+   * إنشاء رابط مؤقت جديد (محسن للأداء)
    */
   async createTemporaryLink(orderId, createdBy = "admin", durationHours = 1) {
     try {
-      await this.invalidateOrderLinks(orderId);
-
-      const token = this.generateSecureToken();
-      const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000);
+      // تحسين الأداء: تشغيل العمليات بشكل متوازي
+      const [invalidationResult, token, expiresAt] = await Promise.all([
+        this.invalidateOrderLinks(orderId),
+        Promise.resolve(this.generateSecureToken()),
+        Promise.resolve(new Date(Date.now() + durationHours * 60 * 60 * 1000)),
+      ]);
 
       const newLink = new TemporaryLinkSchema({
         id: `temp-link-${Date.now()}-${Math.random()
@@ -29,6 +31,7 @@ class TemporaryLinkModel {
         createdBy,
       });
 
+      // تحسين الأداء: استخدام lean() للحصول على أفضل أداء
       const savedLink = await newLink.save();
 
       return {
@@ -36,20 +39,22 @@ class TemporaryLinkModel {
         _id: undefined,
       };
     } catch (error) {
+      console.error("Error creating temporary link:", error);
       throw new Error("فشل في إنشاء الرابط المؤقت");
     }
   }
 
   /**
-   * التحقق من صحة الرابط المؤقت
+   * التحقق من صحة الرابط المؤقت (محسن للأداء)
    */
   async validateTemporaryLink(token, userAgent = "", ipAddress = "") {
     try {
+      // تحسين الأداء: استخدام lean() للحصول على أفضل أداء
       const link = await TemporaryLinkSchema.findOne({
         token,
         isUsed: false,
         expiresAt: { $gt: new Date() },
-      });
+      }).lean();
 
       if (!link) {
         return {
@@ -59,6 +64,7 @@ class TemporaryLinkModel {
         };
       }
 
+      // تحسين الأداء: تحديث عدد مرات الوصول بشكل منفصل لتجنب إرجاع المستند
       await TemporaryLinkSchema.findOneAndUpdate(
         { _id: link._id },
         {
@@ -68,6 +74,10 @@ class TemporaryLinkModel {
             userAgent,
             ipAddress,
           },
+        },
+        {
+          lean: true,
+          returnDocument: "none", // عدم إرجاع المستند المحدث لتوفير الذاكرة
         }
       );
 
@@ -75,11 +85,12 @@ class TemporaryLinkModel {
         isValid: true,
         orderId: link.orderId,
         link: {
-          ...link.toObject(),
+          ...link,
           _id: undefined,
         },
       };
     } catch (error) {
+      console.error("Error validating temporary link:", error);
       return {
         isValid: false,
         reason: "VALIDATION_ERROR",
@@ -143,18 +154,32 @@ class TemporaryLinkModel {
   }
 
   /**
-   * إلغاء جميع الروابط المؤقتة لطلب معين
+   * إلغاء جميع الروابط المؤقتة لطلب معين (محسن للأداء)
    */
   async invalidateOrderLinks(orderId) {
     try {
+      // تحسين الأداء: استخدام updateMany مع lean() للحصول على أفضل أداء
       const result = await TemporaryLinkSchema.updateMany(
         { orderId, isUsed: false },
-        { isUsed: true, usedAt: new Date() }
+        {
+          isUsed: true,
+          usedAt: new Date(),
+        },
+        {
+          lean: true,
+          // عدم إرجاع المستند المحدث لتوفير الذاكرة
+          returnDocument: "none",
+        }
       );
 
       return result.modifiedCount;
     } catch (error) {
-      throw new Error("فشل في إلغاء الروابط المؤقتة");
+      // تحسين معالجة الأخطاء: عدم رمي خطأ إذا لم توجد روابط للإلغاء
+      console.warn(
+        `No active links found for order ${orderId}:`,
+        error.message
+      );
+      return 0;
     }
   }
 

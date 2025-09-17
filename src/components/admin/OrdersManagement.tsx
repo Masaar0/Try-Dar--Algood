@@ -78,6 +78,9 @@ const OrdersManagement: React.FC = () => {
   const [isCreatingLink, setIsCreatingLink] = useState<string | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string>("");
   const [modalCopied, setModalCopied] = useState(false);
+  const [linkCache, setLinkCache] = useState<
+    Map<string, { link: string; timestamp: number }>
+  >(new Map());
 
   useEffect(() => {
     // حل مشكلة التمرير على الهواتف
@@ -304,29 +307,77 @@ const OrdersManagement: React.FC = () => {
   const handleCreateTemporaryLink = async (orderId: string) => {
     setIsCreatingLink(orderId);
     setModalCopied(false); // إعادة تعيين حالة النسخ في النافذة
+    setError(""); // مسح أي أخطاء سابقة
+
     try {
+      // تحسين الأداء: التحقق من الـ cache أولاً
+      const cached = linkCache.get(orderId);
+      const now = Date.now();
+      const cacheExpiry = 5 * 60 * 1000; // 5 دقائق
+
+      if (cached && now - cached.timestamp < cacheExpiry) {
+        setGeneratedLink(cached.link);
+        const copied = await copyToClipboard(cached.link, orderId);
+        if (!copied) {
+          linkModal.openModal();
+        }
+        setIsCreatingLink(null);
+        return;
+      }
+
       const token = authService.getToken();
       if (!token) throw new Error("رمز المصادقة غير موجود");
+
+      // تحسين الأداء: إضافة timeout للطلب لتجنب الانتظار الطويل
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 ثواني timeout
 
       const linkData = await temporaryLinkService.createTemporaryLink(
         orderId,
         1, // ساعة واحدة افتراضياً
-        token
+        token,
+        controller.signal // تمرير إشارة الإلغاء
       );
 
+      clearTimeout(timeoutId);
       setGeneratedLink(linkData.fullUrl);
 
-      // محاولة النسخ التلقائي
-      const copied = await copyToClipboard(linkData.fullUrl, orderId);
+      // تحسين الأداء: حفظ الرابط في الـ cache
+      setLinkCache((prev) =>
+        new Map(prev).set(orderId, {
+          link: linkData.fullUrl,
+          timestamp: now,
+        })
+      );
 
-      if (!copied) {
-        // إذا فشلت النسخ التلقائية، اعرض المودال
+      // تحسين تجربة المستخدم: محاولة النسخ التلقائي مع معالجة أفضل للأخطاء
+      try {
+        const copied = await copyToClipboard(linkData.fullUrl, orderId);
+        if (!copied) {
+          // إذا فشلت النسخ التلقائية، اعرض المودال
+          linkModal.openModal();
+        }
+      } catch (copyError) {
+        console.warn("Failed to copy to clipboard:", copyError);
+        // اعرض المودال حتى لو فشلت النسخ
         linkModal.openModal();
       }
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "فشل في إنشاء الرابط المؤقت"
-      );
+      console.error("Error creating temporary link:", error);
+
+      // تحسين رسائل الخطأ
+      let errorMessage = "فشل في إنشاء الرابط المؤقت";
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          errorMessage = "انتهت مهلة الطلب. يرجى المحاولة مرة أخرى.";
+        } else if (error.message.includes("رمز المصادقة")) {
+          errorMessage = "انتهت جلسة العمل. يرجى تسجيل الدخول مرة أخرى.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      setError(errorMessage);
     } finally {
       setIsCreatingLink(null);
     }
@@ -1279,7 +1330,11 @@ const OrdersManagement: React.FC = () => {
                             onClick={() => handleCreateTemporaryLink(order.id)}
                             disabled={isCreatingLink === order.id}
                             className="text-purple-600 hover:text-purple-800 transition-colors disabled:opacity-50"
-                            title="إنشاء رابط مؤقت"
+                            title={
+                              isCreatingLink === order.id
+                                ? "جاري إنشاء الرابط..."
+                                : "إنشاء رابط مؤقت"
+                            }
                           >
                             {isCreatingLink === order.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />

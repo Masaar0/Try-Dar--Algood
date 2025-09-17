@@ -130,12 +130,13 @@ class TemporaryLinkService {
   private baseUrl = "http://localhost:3001/api/temporary-links";
 
   /**
-   * إنشاء رابط مؤقت لطلب (يتطلب مصادقة المدير)
+   * إنشاء رابط مؤقت لطلب (يتطلب مصادقة المدير) - محسن للأداء
    */
   async createTemporaryLink(
     orderId: string,
     durationHours: number = 1,
-    token: string
+    token: string,
+    signal?: AbortSignal
   ): Promise<TemporaryLinkData> {
     try {
       const response = await fetch(`${this.baseUrl}/create/${orderId}`, {
@@ -145,6 +146,7 @@ class TemporaryLinkService {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ durationHours }),
+        signal, // دعم إلغاء الطلب
       });
 
       if (!response.ok) {
@@ -172,17 +174,36 @@ class TemporaryLinkService {
   }
 
   /**
-   * التحقق من صحة الرابط المؤقت
+   * التحقق من صحة الرابط المؤقت (محسن للأداء)
    */
   async validateTemporaryLink(token: string): Promise<TemporaryLinkValidation> {
     try {
-      const response = await fetch(`${this.baseUrl}/validate/${token}`);
+      // تحسين الأداء: إضافة timeout للطلب
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 ثانية timeout
+
+      const response = await fetch(`${this.baseUrl}/validate/${token}`, {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || `HTTP error! status: ${response.status}`
-        );
+
+        // تحسين رسائل الخطأ حسب نوع الخطأ
+        let errorMessage =
+          errorData.message || `HTTP error! status: ${response.status}`;
+
+        if (response.status === 404) {
+          errorMessage = "الرابط غير صحيح أو منتهي الصلاحية";
+        } else if (response.status === 400) {
+          errorMessage = errorData.message || "الرابط غير صالح للاستخدام";
+        } else if (response.status === 500) {
+          errorMessage = "حدث خطأ في الخادم. يرجى المحاولة مرة أخرى.";
+        }
+
+        throw new Error(errorMessage);
       }
 
       const result: ApiResponse<TemporaryLinkValidation> =
@@ -195,11 +216,18 @@ class TemporaryLinkService {
       return result.data;
     } catch (error) {
       console.error("Error validating temporary link:", error);
-      throw new Error(
-        error instanceof Error
-          ? error.message
-          : "حدث خطأ أثناء التحقق من الرابط"
-      );
+
+      // تحسين رسائل الخطأ
+      let errorMessage = "حدث خطأ أثناء التحقق من الرابط";
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          errorMessage = "انتهت مهلة الطلب. يرجى المحاولة مرة أخرى.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
   }
 

@@ -58,9 +58,10 @@ const temporaryLinkSchema = new mongoose.Schema({
 // إنشاء فهرس للحذف التلقائي للروابط المنتهية الصلاحية
 temporaryLinkSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-// إنشاء فهرس مركب للبحث السريع
-temporaryLinkSchema.index({ orderId: 1, isUsed: 1 });
+// إنشاء فهرس مركب للبحث السريع (محسن للأداء)
+temporaryLinkSchema.index({ orderId: 1, isUsed: 1, expiresAt: 1 });
 temporaryLinkSchema.index({ token: 1, expiresAt: 1 });
+temporaryLinkSchema.index({ createdAt: -1 }); // للبحث السريع حسب التاريخ
 
 // Middleware لتحديث lastAccessAt عند الوصول
 temporaryLinkSchema.pre("findOneAndUpdate", function (next) {

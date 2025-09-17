@@ -25,8 +25,8 @@ export const createTemporaryLink = async (req, res) => {
       });
     }
 
-    const orders = await OrderModel.getOrders();
-    const order = orders.find((o) => o.id === orderId);
+    // تحسين الأداء: البحث مباشرة عن الطلب بدلاً من جلب جميع الطلبات
+    const order = await OrderModel.getOrderById(orderId);
 
     if (!order) {
       return res.status(404).json({
@@ -65,9 +65,26 @@ export const createTemporaryLink = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Error creating temporary link:", error);
+
+    // تحسين معالجة الأخطاء
+    let statusCode = 500;
+    let errorMessage = "حدث خطأ أثناء إنشاء الرابط المؤقت";
+
+    if (error.message.includes("الطلب غير موجود")) {
+      statusCode = 404;
+      errorMessage = error.message;
+    } else if (error.message.includes("مدة الصلاحية")) {
+      statusCode = 400;
+      errorMessage = error.message;
+    } else if (error.message.includes("فشل في إنشاء الرابط المؤقت")) {
+      statusCode = 500;
+      errorMessage = error.message;
+    }
+
+    res.status(statusCode).json({
       success: false,
-      message: error.message || "حدث خطأ أثناء إنشاء الرابط المؤقت",
+      message: errorMessage,
       error: "CREATE_TEMPORARY_LINK_FAILED",
     });
   }
@@ -103,8 +120,8 @@ export const validateTemporaryLink = async (req, res) => {
       });
     }
 
-    const orders = await OrderModel.getOrders();
-    const order = orders.find((o) => o.id === validation.orderId);
+    // تحسين الأداء: البحث مباشرة عن الطلب بدلاً من جلب جميع الطلبات
+    const order = await OrderModel.getOrderById(validation.orderId);
 
     if (!order) {
       return res.status(404).json({
@@ -132,9 +149,23 @@ export const validateTemporaryLink = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Error validating temporary link:", error);
+
+    // تحسين معالجة الأخطاء
+    let statusCode = 500;
+    let errorMessage = "حدث خطأ أثناء التحقق من الرابط";
+
+    if (error.message.includes("الطلب غير موجود")) {
+      statusCode = 404;
+      errorMessage = error.message;
+    } else if (error.message.includes("الرابط غير صحيح")) {
+      statusCode = 400;
+      errorMessage = error.message;
+    }
+
+    res.status(statusCode).json({
       success: false,
-      message: "حدث خطأ أثناء التحقق من الرابط",
+      message: errorMessage,
       error: "VALIDATION_FAILED",
     });
   }
@@ -170,8 +201,8 @@ export const getOrderByTemporaryLink = async (req, res) => {
       });
     }
 
-    const orders = await OrderModel.getOrders();
-    const order = orders.find((o) => o.id === validation.orderId);
+    // تحسين الأداء: البحث مباشرة عن الطلب بدلاً من جلب جميع الطلبات
+    const order = await OrderModel.getOrderById(validation.orderId);
 
     if (!order) {
       return res.status(404).json({
@@ -258,8 +289,8 @@ export const updateOrderByTemporaryLink = async (req, res) => {
       });
     }
 
-    const orders = await OrderModel.getOrders();
-    const existingOrder = orders.find((o) => o.id === validation.orderId);
+    // تحسين الأداء: البحث مباشرة عن الطلب بدلاً من جلب جميع الطلبات
+    const existingOrder = await OrderModel.getOrderById(validation.orderId);
     const oldJacketConfig = existingOrder?.items?.[0]?.jacketConfig;
 
     let imageSyncResult = null;
