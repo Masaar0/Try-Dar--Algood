@@ -293,15 +293,7 @@ export const updateOrderByTemporaryLink = async (req, res) => {
     const existingOrder = await OrderModel.getOrderById(validation.orderId);
     const oldJacketConfig = existingOrder?.items?.[0]?.jacketConfig;
 
-    let imageSyncResult = null;
-    if (oldJacketConfig && jacketConfig) {
-      imageSyncResult = await OrderImageSyncService.syncOrderImages(
-        validation.orderId,
-        oldJacketConfig,
-        jacketConfig
-      );
-    }
-
+    // تحديث الطلب أولاً بدون انتظار مزامنة الصور
     const updatedOrder = await OrderModel.updateOrder(
       validation.orderId,
       {
@@ -314,6 +306,39 @@ export const updateOrderByTemporaryLink = async (req, res) => {
     );
 
     await TemporaryLinkModel.incrementAccessCount(token);
+
+    // مزامنة الصور في الخلفية (غير متزامن)
+    let imageSyncResult = null;
+    if (oldJacketConfig && jacketConfig) {
+      // تشغيل مزامنة الصور في الخلفية بدون انتظار
+      setImmediate(async () => {
+        try {
+          await OrderImageSyncService.syncOrderImages(
+            validation.orderId,
+            oldJacketConfig,
+            jacketConfig
+          );
+        } catch (error) {
+          console.error(
+            "Background image sync failed for temporary link:",
+            error
+          );
+        }
+      });
+
+      // إرجاع نتيجة سريعة للمستخدم
+      imageSyncResult = {
+        success: true,
+        hasChanges: true,
+        message: "سيتم مزامنة الصور في الخلفية",
+        hasWarnings: false,
+        imageChanges: {
+          removed: [],
+          added: [],
+          retained: [],
+        },
+      };
+    }
 
     const responseData = {
       success: true,

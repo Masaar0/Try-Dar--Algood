@@ -271,6 +271,9 @@ const TemporaryOrderEditContent: React.FC = () => {
         totalPrice: jacketState.totalPrice,
       };
 
+      // إظهار رسالة فورية للمستخدم
+      setSaveMessage("جاري حفظ التعديلات...");
+
       const updateResult =
         await temporaryLinkService.updateOrderByTemporaryLink(
           token,

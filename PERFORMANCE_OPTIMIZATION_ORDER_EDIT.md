@@ -12,7 +12,10 @@
 
 ### 1. مزامنة الصور في الخلفية
 
-**الملف**: `Server-Algood-main/controllers/orderController.js`
+**الملفات**:
+
+- `Server-Algood-main/controllers/orderController.js` (للطلبات العادية)
+- `Server-Algood-main/controllers/temporaryLinkController.js` (للروابط المؤقتة)
 
 - تم تغيير عملية مزامنة الصور لتتم في الخلفية باستخدام `setImmediate()`
 - المستخدم يحصل على استجابة فورية بعد حفظ بيانات الطلب
@@ -60,7 +63,10 @@ const results = await Promise.allSettled(copyPromises);
 
 ### 4. تحسين تجربة المستخدم
 
-**الملف**: `src/pages/OrderEditPage.tsx`
+**الملفات**:
+
+- `src/pages/OrderEditPage.tsx` (للطلبات العادية)
+- `src/pages/TemporaryOrderEditPage.tsx` (للروابط المؤقتة)
 
 - إضافة رسالة فورية "جاري حفظ التعديلات..." للمستخدم
 - تحسين رسائل النجاح والخطأ
@@ -106,3 +112,21 @@ const results = await Promise.allSettled(copyPromises);
 5. تحقق من أن البيانات محفوظة بشكل صحيح
 
 التحسينات تطبق تلقائياً ولا تحتاج لإعادة تشغيل الخادم.
+
+## الملفات المحدثة
+
+### الخادم (Backend):
+
+- `Server-Algood-main/controllers/orderController.js` - مزامنة في الخلفية للطلبات العادية
+- `Server-Algood-main/controllers/temporaryLinkController.js` - مزامنة في الخلفية للروابط المؤقتة
+- `Server-Algood-main/utils/orderImageSyncService.js` - معالجة متوازية للصور
+- `Server-Algood-main/utils/imageBackup.js` - تحسين عمليات Cloudinary
+
+### الواجهة الأمامية (Frontend):
+
+- `src/pages/OrderEditPage.tsx` - تحسين تجربة المستخدم للطلبات العادية
+- `src/pages/TemporaryOrderEditPage.tsx` - تحسين تجربة المستخدم للروابط المؤقتة
+
+### التوثيق:
+
+- `PERFORMANCE_OPTIMIZATION_ORDER_EDIT.md` - توثيق التحسينات
