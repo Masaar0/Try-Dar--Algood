@@ -219,9 +219,10 @@ export const ImageLibraryProvider: React.FC<{ children: React.ReactNode }> = ({
       setCategories(data.categories);
     } catch (error) {
       console.error("Error loading predefined images:", error);
-      setError(
-        error instanceof Error ? error.message : "فشل في تحميل البيانات"
-      );
+      // عند فشل التحميل، نعرض قائمة فارغة بدلاً من رسالة خطأ
+      setPredefinedImages([]);
+      setCategories([]);
+      setError(null); // لا نعرض رسالة خطأ
     } finally {
       setIsLoading(false);
     }
