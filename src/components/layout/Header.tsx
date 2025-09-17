@@ -11,16 +11,19 @@ import {
   Menu,
   X,
   Images,
+  Settings,
 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "/Photo/logo.png";
+import authService from "../../services/authService";
 
 const Header: React.FC = () => {
   const location = useLocation();
   const { getTotalItems } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [showShadow, setShowShadow] = React.useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = React.useState(false);
 
   const mobileMenuRef = React.useRef<HTMLDivElement>(null);
 
@@ -31,6 +34,31 @@ const Header: React.FC = () => {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // التحقق من حالة المصادقة للمدير
+  React.useEffect(() => {
+    const checkAdminAuth = async () => {
+      try {
+        const isValid = await authService.verifySession();
+        setIsAdminAuthenticated(isValid);
+      } catch (error) {
+        setIsAdminAuthenticated(false);
+      }
+    };
+
+    checkAdminAuth();
+
+    // الاستماع لتغييرات localStorage للتحقق من تسجيل الدخول/الخروج
+    const handleStorageChange = () => {
+      checkAdminAuth();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -73,6 +101,16 @@ const Header: React.FC = () => {
     },
     { name: "اتصل بنا", href: "/contact", icon: Phone },
     { name: "الأسئلة الشائعة", href: "/faq", icon: HelpCircle },
+    // زر لوحة التحكم - يظهر فقط للمديرين
+    ...(isAdminAuthenticated
+      ? [
+          {
+            name: "لوحة التحكم",
+            href: "/x9qPzRwT3mY2kV8nL5jF6hD4cB",
+            icon: Settings,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -82,12 +120,19 @@ const Header: React.FC = () => {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-14">
+        <div className="flex justify-between items-center h-12 sm:h-14">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-            <img src={logo} alt="Logo" className="h-7 w-auto" />
+          <Link
+            to="/"
+            className="flex items-center gap-1 sm:gap-2 flex-shrink-0 min-w-0"
+          >
+            <img
+              src={logo}
+              alt="Logo"
+              className="h-6 sm:h-7 w-auto flex-shrink-0"
+            />
             <span
-              className="text-base sm:text-lg font-semibold text-[#563660] whitespace-nowrap"
+              className="text-sm sm:text-base lg:text-lg font-semibold text-[#563660] whitespace-nowrap"
               style={{ fontFamily: "'Scheherazade New', serif" }}
             >
               دار الجود
@@ -95,21 +140,21 @@ const Header: React.FC = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-4 rtl:space-x-reverse">
+          <nav className="hidden xl:flex items-center space-x-2 rtl:space-x-reverse">
             {navigation.map((item) => {
               const Icon = item.icon;
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 relative whitespace-nowrap ${
+                  className={`flex items-center space-x-2 rtl:space-x-reverse px-2 py-2 rounded-md text-sm font-medium transition-colors duration-200 relative whitespace-nowrap ${
                     location.pathname === item.href
                       ? "text-[#563660] bg-[#563660]/5"
                       : "text-gray-600 hover:text-[#563660]"
                   }`}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span className="hidden xl:inline">{item.name}</span>
+                  <span>{item.name}</span>
                   {item.badge && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                       {item.badge}
@@ -120,10 +165,36 @@ const Header: React.FC = () => {
             })}
           </nav>
 
-          {/* Mobile Menu Button */}
+          {/* Tablet Navigation - Icons Only */}
+          <nav className="hidden lg:flex xl:hidden items-center space-x-1 rtl:space-x-reverse">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`flex items-center justify-center p-2 rounded-md text-sm font-medium transition-colors duration-200 relative ${
+                    location.pathname === item.href
+                      ? "text-[#563660] bg-[#563660]/5"
+                      : "text-gray-600 hover:text-[#563660]"
+                  }`}
+                  title={item.name}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  {item.badge && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Mobile/Tablet Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-800 transition-colors flex-shrink-0"
+            className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-colors flex-shrink-0"
             aria-label="فتح القائمة"
           >
             {isMobileMenuOpen ? (
@@ -155,7 +226,7 @@ const Header: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: "100%" }}
               transition={{ type: "tween", duration: 0.3 }}
-              className="lg:hidden fixed top-0 right-0 h-screen w-72 max-w-[85vw] bg-white shadow-lg z-50 overflow-y-auto"
+              className="lg:hidden fixed top-0 right-0 h-screen w-80 max-w-[90vw] bg-white shadow-lg z-50 overflow-y-auto"
             >
               {/* Mobile Menu Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-100">
