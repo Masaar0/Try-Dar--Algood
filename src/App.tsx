@@ -18,7 +18,6 @@ import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
 import TermsPage from "./pages/TermsPage";
 import ReturnPolicyPage from "./pages/ReturnPolicyPage";
-import CloudinaryTestPage from "./pages/CloudinaryTestPage";
 import ImageLibraryPage from "./pages/ImageLibraryPage";
 import AdminPanelPage from "./pages/AdminPanelPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
@@ -64,10 +63,6 @@ function App() {
                 <Route path="/faq" element={<FAQPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/return-policy" element={<ReturnPolicyPage />} />
-                <Route
-                  path="/cloudinary-test"
-                  element={<CloudinaryTestPage />}
-                />
                 <Route path="/image-library" element={<ImageLibraryPage />} />
                 <Route
                   path="/x9qPzRwT3mY2kV8nL5jF6hD4cB"
