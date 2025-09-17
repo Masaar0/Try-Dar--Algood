@@ -125,10 +125,17 @@ const JacketCustomizer: React.FC = () => {
     setShowMobileDetails((prev) => !prev);
   };
 
-  // حساب تفاصيل التسعير من الباك إند
+  // حساب تفاصيل التسعير من الباك إند مع debouncing
   useEffect(() => {
     const loadPricingBreakdown = async () => {
-      setIsLoadingPricing(true);
+      // إظهار Loader فقط في التحميل الأول أو عند تغيير الكمية بشكل ملحوظ
+      const isFirstLoad = !pricingBreakdown;
+      const shouldShowLoader = isFirstLoad;
+
+      if (shouldShowLoader) {
+        setIsLoadingPricing(true);
+      }
+
       try {
         // فلترة الشعارات مع إزالة المكررات
         const uniqueLogos = jacketState.logos.filter(
@@ -181,11 +188,16 @@ const JacketCustomizer: React.FC = () => {
           finalPrice: 220 * quantity,
         });
       } finally {
-        setIsLoadingPricing(false);
+        if (shouldShowLoader) {
+          setIsLoadingPricing(false);
+        }
       }
     };
 
-    loadPricingBreakdown();
+    // إضافة debouncing لتأخير التحديث
+    const timeoutId = setTimeout(loadPricingBreakdown, 300);
+
+    return () => clearTimeout(timeoutId);
   }, [jacketState.logos, jacketState.texts, quantity, calculatePrice]);
 
   return (
