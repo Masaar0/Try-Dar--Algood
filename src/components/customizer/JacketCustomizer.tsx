@@ -41,11 +41,6 @@ const JacketCustomizer: React.FC = () => {
       quantity: number;
     }>;
     totalPrice: number;
-    appliedDiscount: {
-      type: string;
-      percentage: number;
-      amount: number;
-    } | null;
     finalPrice: number;
   } | null>(null);
 
@@ -174,7 +169,6 @@ const JacketCustomizer: React.FC = () => {
           basePrice: 220,
           additionalCosts: [],
           totalPrice: 220,
-          appliedDiscount: null,
           finalPrice: 220 * quantity,
         });
       }

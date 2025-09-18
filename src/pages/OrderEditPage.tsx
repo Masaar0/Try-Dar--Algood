@@ -31,7 +31,7 @@ import JacketImageCapture, {
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import { useModal } from "../hooks/useModal";
 import fontPreloader from "../utils/fontPreloader";
-import { generateOrderPDFWithImages } from "../utils/pdfGenerator";
+import { generateOrderPDFWithImages, PDFCartItem } from "../utils/pdfGenerator";
 
 // دالة مساعدة لتحويل التاريخ إلى الصيغة المطلوبة YYYY/MM/DD
 const formatDate = (dateString: string): string => {
@@ -237,26 +237,6 @@ const OrderEditContent: React.FC = () => {
       // تحميل بيانات التصميم فقط
       const order = await orderService.getOrderById(orderId, token);
 
-      // عرض البيانات المُجلبَة في console للتأكد من عدم وجود backupImages
-      console.log("🔍 بيانات الطلب المُجلبَة:", order);
-      console.log("🔍 هل يحتوي على backupImages؟", "backupImages" in order);
-      if ("backupImages" in order) {
-        console.log("❌ خطأ: حقل backupImages موجود في البيانات!");
-        console.log("📋 قيمة backupImages:", order.backupImages);
-      } else {
-        console.log("✅ لا يوجد حقل backupImages في البيانات");
-      }
-
-      // عرض عدد الصور المُجلبَة
-      if (order.items && order.items.length > 0) {
-        const jacketConfig = order.items[0].jacketConfig;
-        const logosCount = jacketConfig.logos ? jacketConfig.logos.length : 0;
-
-        console.log("📊 عدد الصور المُجلبَة:");
-        console.log("   - عدد الشعارات المستخدمة:", logosCount);
-        console.log("   ✅ مكتبة الصور منفصلة عن الطلب (تحسين الأداء)");
-      }
-
       // تطبيق بيانات التصميم فوراً مع تحميل الصور السريع
       if (order.items.length > 0) {
         await applyJacketConfig(order.items[0].jacketConfig);
@@ -338,56 +318,60 @@ const OrderEditContent: React.FC = () => {
 
       const pdfBlob = await generateOrderPDFWithImages(
         {
-          cartItems: orderData.items.map((item) => ({
-            id: item.id,
-            jacketConfig: {
-              ...item.jacketConfig,
-              colors: item.jacketConfig.colors,
-              materials: {
-                body: item.jacketConfig.materials.body as "leather" | "cotton",
-                sleeves: item.jacketConfig.materials.sleeves as
-                  | "leather"
-                  | "cotton",
-                trim: item.jacketConfig.materials.body as "leather" | "cotton",
+          cartItems: orderData.items.map(
+            (item): PDFCartItem => ({
+              id: item.id,
+              jacketConfig: {
+                ...item.jacketConfig,
+                colors: item.jacketConfig.colors,
+                materials: {
+                  body: item.jacketConfig.materials.body as
+                    | "leather"
+                    | "cotton",
+                  sleeves: item.jacketConfig.materials.sleeves as
+                    | "leather"
+                    | "cotton",
+                  trim: item.jacketConfig.materials.body as
+                    | "leather"
+                    | "cotton",
+                },
+                size: item.jacketConfig.size as
+                  | "XS"
+                  | "S"
+                  | "M"
+                  | "L"
+                  | "XL"
+                  | "2XL"
+                  | "3XL"
+                  | "4XL",
+                logos: item.jacketConfig.logos.map((logo) => ({
+                  ...logo,
+                  position: logo.position as
+                    | "chestRight"
+                    | "chestLeft"
+                    | "backCenter"
+                    | "rightSide_top"
+                    | "rightSide_middle"
+                    | "rightSide_bottom"
+                    | "leftSide_top"
+                    | "leftSide_middle"
+                    | "leftSide_bottom",
+                })),
+                texts: item.jacketConfig.texts.map((text) => ({
+                  ...text,
+                  position: text.position as
+                    | "chestRight"
+                    | "chestLeft"
+                    | "backBottom",
+                })),
+                totalPrice: item.jacketConfig.totalPrice,
+                uploadedImages: [], // مكتبة الصور منفصلة عن الطلب
               },
-              size: item.jacketConfig.size as
-                | "XS"
-                | "S"
-                | "M"
-                | "L"
-                | "XL"
-                | "2XL"
-                | "3XL"
-                | "4XL",
-              logos: item.jacketConfig.logos.map((logo) => ({
-                ...logo,
-                position: logo.position as
-                  | "chestRight"
-                  | "chestLeft"
-                  | "backCenter"
-                  | "rightSide_top"
-                  | "rightSide_middle"
-                  | "rightSide_bottom"
-                  | "leftSide_top"
-                  | "leftSide_middle"
-                  | "leftSide_bottom",
-              })),
-              texts: item.jacketConfig.texts.map((text) => ({
-                ...text,
-                position: text.position as
-                  | "chestRight"
-                  | "chestLeft"
-                  | "backBottom",
-              })),
-              currentView: "front" as const,
-              totalPrice: item.jacketConfig.totalPrice,
-              isCapturing: false,
-              uploadedImages: [], // مكتبة الصور منفصلة عن الطلب
-            },
-            quantity: item.quantity,
-            price: item.price,
-            addedAt: new Date(orderData.createdAt),
-          })),
+              quantity: item.quantity,
+              price: item.price,
+              addedAt: new Date(orderData.createdAt),
+            })
+          ),
           totalPrice: orderData.totalPrice,
           customerInfo: customerInfo,
           orderNumber: orderData.orderNumber,

@@ -78,11 +78,6 @@ export interface JacketState {
       quantity: number;
     }>;
     totalPrice: number;
-    appliedDiscount: {
-      type: string;
-      percentage: number;
-      amount: number;
-    } | null;
     finalPrice: number;
   };
 }
@@ -284,7 +279,6 @@ export const JacketProvider: React.FC<{ children: React.ReactNode }> = ({
             basePrice: 220,
             additionalCosts: [],
             totalPrice: 220,
-            appliedDiscount: null,
             finalPrice: 220 * quantity,
           },
         };

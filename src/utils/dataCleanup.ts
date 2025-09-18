@@ -93,11 +93,6 @@ export const cleanupJacketData = (jacketConfig: {
       quantity: number;
     }>;
     totalPrice: number;
-    appliedDiscount: {
-      type: string;
-      percentage: number;
-      amount: number;
-    } | null;
     finalPrice: number;
   };
 }) => {

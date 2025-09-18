@@ -33,7 +33,7 @@ import JacketImageCapture, {
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import { useModal } from "../hooks/useModal";
 // تم إزالة العمليات المعقدة لتحسين السرعة
-import { generateOrderPDFWithImages } from "../utils/pdfGenerator";
+import { generateOrderPDFWithImages, PDFCartItem } from "../utils/pdfGenerator";
 import fontPreloader from "../utils/fontPreloader";
 
 // دالة مساعدة لتحويل التاريخ إلى الصيغة المطلوبة YYYY/MM/DD
@@ -376,56 +376,60 @@ const TemporaryOrderEditContent: React.FC = () => {
       // إنشاء PDF
       const pdfBlob = await generateOrderPDFWithImages(
         {
-          cartItems: orderData.order.items.map((item) => ({
-            id: item.id,
-            jacketConfig: {
-              ...item.jacketConfig,
-              colors: item.jacketConfig.colors,
-              materials: {
-                body: item.jacketConfig.materials.body as "leather" | "cotton",
-                sleeves: item.jacketConfig.materials.sleeves as
-                  | "leather"
-                  | "cotton",
-                trim: item.jacketConfig.materials.body as "leather" | "cotton",
+          cartItems: orderData.order.items.map(
+            (item): PDFCartItem => ({
+              id: item.id,
+              jacketConfig: {
+                ...item.jacketConfig,
+                colors: item.jacketConfig.colors,
+                materials: {
+                  body: item.jacketConfig.materials.body as
+                    | "leather"
+                    | "cotton",
+                  sleeves: item.jacketConfig.materials.sleeves as
+                    | "leather"
+                    | "cotton",
+                  trim: item.jacketConfig.materials.body as
+                    | "leather"
+                    | "cotton",
+                },
+                size: item.jacketConfig.size as
+                  | "XS"
+                  | "S"
+                  | "M"
+                  | "L"
+                  | "XL"
+                  | "2XL"
+                  | "3XL"
+                  | "4XL",
+                logos: item.jacketConfig.logos.map((logo) => ({
+                  ...logo,
+                  position: logo.position as
+                    | "chestRight"
+                    | "chestLeft"
+                    | "backCenter"
+                    | "rightSide_top"
+                    | "rightSide_middle"
+                    | "rightSide_bottom"
+                    | "leftSide_top"
+                    | "leftSide_middle"
+                    | "leftSide_bottom",
+                })),
+                texts: item.jacketConfig.texts.map((text) => ({
+                  ...text,
+                  position: text.position as
+                    | "chestRight"
+                    | "chestLeft"
+                    | "backBottom",
+                })),
+                totalPrice: item.jacketConfig.totalPrice,
+                uploadedImages: [], // مكتبة الصور منفصلة عن الطلب
               },
-              size: item.jacketConfig.size as
-                | "XS"
-                | "S"
-                | "M"
-                | "L"
-                | "XL"
-                | "2XL"
-                | "3XL"
-                | "4XL",
-              logos: item.jacketConfig.logos.map((logo) => ({
-                ...logo,
-                position: logo.position as
-                  | "chestRight"
-                  | "chestLeft"
-                  | "backCenter"
-                  | "rightSide_top"
-                  | "rightSide_middle"
-                  | "rightSide_bottom"
-                  | "leftSide_top"
-                  | "leftSide_middle"
-                  | "leftSide_bottom",
-              })),
-              texts: item.jacketConfig.texts.map((text) => ({
-                ...text,
-                position: text.position as
-                  | "chestRight"
-                  | "chestLeft"
-                  | "backBottom",
-              })),
-              currentView: "front" as const,
-              totalPrice: item.jacketConfig.totalPrice,
-              isCapturing: false,
-              uploadedImages: [], // مكتبة الصور منفصلة عن الطلب
-            },
-            quantity: item.quantity,
-            price: item.price,
-            addedAt: new Date(orderData.order.createdAt),
-          })),
+              quantity: item.quantity,
+              price: item.price,
+              addedAt: new Date(orderData.order.createdAt),
+            })
+          ),
           totalPrice: orderData.order.totalPrice,
           customerInfo: customerInfo,
           orderNumber: orderData.order.orderNumber,

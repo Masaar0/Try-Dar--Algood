@@ -93,9 +93,7 @@ const jacketConfigSchema = new mongoose.Schema(
     },
     logos: [logoSchema],
     texts: [textSchema],
-    // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
     totalPrice: { type: Number, required: true, default: 220 },
-    isCapturing: { type: Boolean, default: false },
     pricingBreakdown: {
       basePrice: { type: Number },
       additionalCosts: [
@@ -106,11 +104,6 @@ const jacketConfigSchema = new mongoose.Schema(
         },
       ],
       totalPrice: { type: Number },
-      appliedDiscount: {
-        type: { type: String },
-        percentage: Number,
-        amount: Number,
-      },
       finalPrice: { type: Number },
     },
   },

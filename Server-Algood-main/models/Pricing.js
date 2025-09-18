@@ -154,7 +154,6 @@ class PricingModel {
         basePrice: pricing.basePrice,
         additionalCosts: [],
         totalPrice: 0,
-        appliedDiscount: null,
         finalPrice: 0,
       };
 

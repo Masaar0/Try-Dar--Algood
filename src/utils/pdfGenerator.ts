@@ -1,8 +1,65 @@
 import jsPDF from "jspdf";
-import { CartItem } from "../context/CartContext";
+
+// Interface منفصل للـ PDF (بدون currentView و isCapturing)
+export interface PDFJacketConfig {
+  colors: {
+    body: string;
+    sleeves: string;
+    trim: string;
+  };
+  materials: {
+    body: "leather" | "cotton";
+    sleeves: "leather" | "cotton";
+    trim: "leather" | "cotton";
+  };
+  size: "XS" | "S" | "M" | "L" | "XL" | "2XL" | "3XL" | "4XL";
+  logos: Array<{
+    id: string;
+    image: string | null;
+    position: string;
+    x: number;
+    y: number;
+    scale: number;
+    rotation?: number;
+  }>;
+  texts: Array<{
+    id: string;
+    content: string;
+    position: string;
+    x: number;
+    y: number;
+    scale: number;
+    font: string;
+    color: string;
+    isConnected: boolean;
+    charStyles?: Array<{
+      x?: number;
+      y?: number;
+      scale?: number;
+      font?: string;
+      color?: string;
+    }>;
+  }>;
+  totalPrice: number;
+  uploadedImages: Array<{
+    id: string;
+    url: string;
+    name: string;
+    uploadedAt: Date;
+    publicId?: string;
+  }>;
+}
+
+export interface PDFCartItem {
+  id: string;
+  jacketConfig: PDFJacketConfig;
+  quantity: number;
+  price: number;
+  addedAt: Date;
+}
 
 export interface PDFGenerationOptions {
-  cartItems: CartItem[];
+  cartItems: PDFCartItem[];
   totalPrice: number;
   customerInfo: {
     name: string;
