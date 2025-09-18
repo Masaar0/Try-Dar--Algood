@@ -368,7 +368,6 @@ const PredefinedImagesManagement: React.FC = () => {
                       className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                       loading="eager"
                       decoding="async"
-                      fetchPriority="high"
                     />
                   </div>
 

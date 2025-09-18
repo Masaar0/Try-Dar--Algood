@@ -95,7 +95,6 @@ const HomePage: React.FC = () => {
                 transition={{ duration: 1, ease: "easeInOut" }}
                 loading="eager"
                 decoding="sync"
-                fetchPriority="high"
               />
             ))}
             <motion.div

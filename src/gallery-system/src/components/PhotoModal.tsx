@@ -141,7 +141,6 @@ export const PhotoModal: React.FC<
               className="w-full h-96 object-cover"
               loading="eager"
               decoding="async"
-              fetchPriority="high"
             />
 
             <div className="p-6">
