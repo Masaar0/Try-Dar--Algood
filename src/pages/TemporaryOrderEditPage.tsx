@@ -420,7 +420,7 @@ const TemporaryOrderEditContent: React.FC = () => {
               currentView: "front" as const,
               totalPrice: item.jacketConfig.totalPrice,
               isCapturing: false,
-              uploadedImages: item.jacketConfig.uploadedImages || [],
+              uploadedImages: [], // مكتبة الصور منفصلة عن الطلب
             },
             quantity: item.quantity,
             price: item.price,

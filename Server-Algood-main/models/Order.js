@@ -83,7 +83,11 @@ class OrderModel {
         },
         items: orderData.items.map((item) => ({
           id: item.id,
-          jacketConfig: item.jacketConfig,
+          jacketConfig: {
+            ...item.jacketConfig,
+            // إزالة uploadedImages من الطلب - مكتبة الصور منفصلة عن الطلب
+            uploadedImages: undefined,
+          },
           quantity: item.quantity,
           price: item.price,
         })),
@@ -158,6 +162,54 @@ class OrderModel {
   async getOrderById(orderId) {
     try {
       const order = await OrderSchema.findOne({ id: orderId }).lean();
+
+      if (!order) {
+        return null;
+      }
+
+      return {
+        ...order,
+        _id: undefined,
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * الحصول على طلب بواسطة معرف الطلب (محسن للأداء - بدون الصور غير الضرورية)
+   */
+  async getOrderByIdOptimized(orderId) {
+    try {
+      const order = await OrderSchema.findOne(
+        { id: orderId },
+        {
+          id: 1,
+          orderNumber: 1,
+          trackingCode: 1,
+          customerInfo: 1,
+          totalPrice: 1,
+          status: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          statusHistory: 1,
+          estimatedDelivery: 1,
+          shippedAt: 1,
+          deliveredAt: 1,
+          notes: 1,
+          "items.id": 1,
+          "items.quantity": 1,
+          "items.price": 1,
+          "items.jacketConfig.colors": 1,
+          "items.jacketConfig.materials": 1,
+          "items.jacketConfig.size": 1,
+          "items.jacketConfig.logos": 1,
+          "items.jacketConfig.texts": 1,
+          "items.jacketConfig.totalPrice": 1,
+          "items.jacketConfig.isCapturing": 1,
+          // استبعاد uploadedImages لتحسين الأداء
+        }
+      ).lean();
 
       if (!order) {
         return null;

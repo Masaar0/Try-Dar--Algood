@@ -205,7 +205,7 @@ export const getAllOrders = async (req, res) => {
     });
   }
 };
-// الحصول على طلب واحد (يتطلب مصادقة المدير)
+// الحصول على طلب واحد (يتطلب مصادقة المدير) - محسن للأداء
 export const getOrderById = async (req, res) => {
   try {
     if (!req.admin || req.admin.role !== "admin") {
@@ -226,7 +226,7 @@ export const getOrderById = async (req, res) => {
       });
     }
 
-    const order = await OrderModel.getOrderById(orderId);
+    const order = await OrderModel.getOrderByIdOptimized(orderId);
 
     if (!order) {
       return res.status(404).json({

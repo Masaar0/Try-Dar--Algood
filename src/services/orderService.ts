@@ -40,13 +40,7 @@ export interface JacketConfig {
   // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
   totalPrice: number;
   isCapturing: boolean;
-  uploadedImages: Array<{
-    id: string;
-    url: string;
-    name: string;
-    uploadedAt: Date;
-    publicId?: string;
-  }>;
+  // uploadedImages محذوف - مكتبة الصور منفصلة عن الطلب
 }
 
 export interface OrderData {

@@ -57,18 +57,6 @@ const textSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Schema للصور المرفوعة
-const uploadedImageSchema = new mongoose.Schema(
-  {
-    id: { type: String, required: true },
-    url: { type: String, required: true },
-    name: { type: String, required: true },
-    uploadedAt: { type: Date, default: Date.now },
-    publicId: { type: String },
-  },
-  { _id: false }
-);
-
 // Schema لتكوين الجاكيت
 const jacketConfigSchema = new mongoose.Schema(
   {
@@ -108,7 +96,6 @@ const jacketConfigSchema = new mongoose.Schema(
     // currentView محذوف - سيتم استخدام "front" كافتراضي دائماً
     totalPrice: { type: Number, required: true, default: 220 },
     isCapturing: { type: Boolean, default: false },
-    uploadedImages: [uploadedImageSchema],
     pricingBreakdown: {
       basePrice: { type: Number },
       additionalCosts: [

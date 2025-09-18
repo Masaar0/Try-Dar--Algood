@@ -237,6 +237,26 @@ const OrderEditContent: React.FC = () => {
       // تحميل بيانات التصميم فقط
       const order = await orderService.getOrderById(orderId, token);
 
+      // عرض البيانات المُجلبَة في console للتأكد من عدم وجود backupImages
+      console.log("🔍 بيانات الطلب المُجلبَة:", order);
+      console.log("🔍 هل يحتوي على backupImages؟", "backupImages" in order);
+      if ("backupImages" in order) {
+        console.log("❌ خطأ: حقل backupImages موجود في البيانات!");
+        console.log("📋 قيمة backupImages:", order.backupImages);
+      } else {
+        console.log("✅ لا يوجد حقل backupImages في البيانات");
+      }
+
+      // عرض عدد الصور المُجلبَة
+      if (order.items && order.items.length > 0) {
+        const jacketConfig = order.items[0].jacketConfig;
+        const logosCount = jacketConfig.logos ? jacketConfig.logos.length : 0;
+
+        console.log("📊 عدد الصور المُجلبَة:");
+        console.log("   - عدد الشعارات المستخدمة:", logosCount);
+        console.log("   ✅ مكتبة الصور منفصلة عن الطلب (تحسين الأداء)");
+      }
+
       // تطبيق بيانات التصميم فوراً مع تحميل الصور السريع
       if (order.items.length > 0) {
         await applyJacketConfig(order.items[0].jacketConfig);
@@ -362,7 +382,7 @@ const OrderEditContent: React.FC = () => {
               currentView: "front" as const,
               totalPrice: item.jacketConfig.totalPrice,
               isCapturing: false,
-              uploadedImages: item.jacketConfig.uploadedImages || [],
+              uploadedImages: [], // مكتبة الصور منفصلة عن الطلب
             },
             quantity: item.quantity,
             price: item.price,
