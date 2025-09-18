@@ -23,6 +23,7 @@ import { ImageLibraryProvider } from "../context/ImageLibraryContext";
 import temporaryLinkService, {
   TemporaryOrderData,
 } from "../services/temporaryLinkService";
+import { JacketConfig } from "../services/orderService";
 import JacketViewer from "../components/jacket/JacketViewer";
 import CustomizationSidebar from "../components/sidebar/CustomizationSidebar";
 import TopBar from "../components/ui/TopBar";
@@ -31,7 +32,7 @@ import JacketImageCapture, {
 } from "../components/jacket/JacketImageCapture";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import { useModal } from "../hooks/useModal";
-import { cleanupJacketData, validateDataIntegrity } from "../utils/dataCleanup";
+// تم إزالة العمليات المعقدة لتحسين السرعة
 import { generateOrderPDFWithImages } from "../utils/pdfGenerator";
 import fontPreloader from "../utils/fontPreloader";
 
@@ -81,7 +82,7 @@ const TemporaryOrderEditContent: React.FC = () => {
 
   // تم التعديل هنا: حذف دالة return()
   useEffect(() => {
-    // حفظ نسخة احتياطية من بيانات الـ customizer
+    // حفظ نسخة احتياطية من بيانات الـ customizer مع مفتاح فريد
     const customizerState = localStorage.getItem("jacketState");
     const customizerCart = localStorage.getItem("cart");
 
@@ -99,6 +100,126 @@ const TemporaryOrderEditContent: React.FC = () => {
     // ضمان البدء بالموضع الأمامي في صفحة التعديل
     setCurrentView("front");
   }, [setCurrentView]);
+
+  // دالة تحميل الصور السريع (مثل مكتبة الصور)
+  const preloadImages = useCallback(async (images: string[]) => {
+    const preloadPromises = images.map((imageUrl, index) => {
+      return new Promise<void>((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.loading = "eager";
+        img.decoding = index < 5 ? "sync" : "async";
+        img.fetchPriority = index < 5 ? "high" : "auto";
+
+        // تحسين URL للصور لتحميل أسرع (Cloudinary optimization)
+        const optimizedUrl = imageUrl.includes("upload/")
+          ? imageUrl.replace("upload/", "upload/q_auto,f_auto,w_300,h_300/")
+          : imageUrl;
+
+        img.src = optimizedUrl;
+
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+      });
+    });
+
+    // تحميل الصور بشكل متوازي
+    await Promise.allSettled(preloadPromises);
+  }, []);
+
+  // دالة فائقة السرعة لتطبيق تكوين الجاكيت مع تحميل الصور السريع
+  const applyJacketConfig = useCallback(
+    async (jacketConfig: JacketConfig) => {
+      // مسح البيانات الحالية بسرعة
+      jacketState.logos.forEach((logo) => removeLogo(logo.id));
+      jacketState.texts.forEach((text) => removeText(text.id));
+
+      // تطبيق الألوان والخامات والمقاس مباشرة
+      setColor("body", jacketConfig.colors.body);
+      setColor("sleeves", jacketConfig.colors.sleeves);
+      setColor("trim", jacketConfig.colors.trim);
+      setMaterial("body", jacketConfig.materials.body as "leather" | "cotton");
+      setMaterial(
+        "sleeves",
+        jacketConfig.materials.sleeves as "leather" | "cotton"
+      );
+      setSize(
+        jacketConfig.size as
+          | "XS"
+          | "S"
+          | "M"
+          | "L"
+          | "XL"
+          | "2XL"
+          | "3XL"
+          | "4XL"
+      );
+
+      // جمع جميع الصور للتحميل السريع
+      const allImages = jacketConfig.logos
+        .map((logo) => logo.image)
+        .filter((image): image is string => image !== null);
+
+      // تحميل الصور بسرعة فائقة (مثل مكتبة الصور)
+      if (allImages.length > 0) {
+        await preloadImages(allImages);
+      }
+
+      // إضافة الشعارات مباشرة (الصور محملة بالفعل)
+      jacketConfig.logos.forEach((logo) => {
+        addLogo({
+          id: logo.id,
+          image: logo.image,
+          position: logo.position as
+            | "chestRight"
+            | "chestLeft"
+            | "backCenter"
+            | "rightSide_top"
+            | "rightSide_middle"
+            | "rightSide_bottom"
+            | "leftSide_top"
+            | "leftSide_middle"
+            | "leftSide_bottom",
+          x: logo.x,
+          y: logo.y,
+          scale: logo.scale,
+          rotation: logo.rotation,
+        });
+      });
+
+      // إضافة النصوص مباشرة
+      jacketConfig.texts.forEach((text) => {
+        addText({
+          id: text.id,
+          content: text.content,
+          position: text.position as "chestRight" | "chestLeft" | "backBottom",
+          x: text.x,
+          y: text.y,
+          scale: text.scale,
+          font: text.font,
+          color: text.color,
+          isConnected: text.isConnected,
+          charStyles: text.charStyles,
+        });
+      });
+
+      // تعيين العرض الحالي
+      setCurrentView("front");
+    },
+    [
+      jacketState.logos,
+      jacketState.texts,
+      removeLogo,
+      removeText,
+      setColor,
+      setMaterial,
+      setSize,
+      addLogo,
+      addText,
+      setCurrentView,
+      preloadImages,
+    ]
+  );
 
   // عداد الوقت المتبقي
   useEffect(() => {
@@ -137,90 +258,9 @@ const TemporaryOrderEditContent: React.FC = () => {
       setOrderData(orderData);
       setCustomerInfo(orderData.order.customerInfo);
 
-      // تحميل تكوين الجاكيت إلى الـ context
+      // تحميل تكوين الجاكيت إلى الـ context مع تحميل الصور السريع
       if (orderData.order.items.length > 0) {
-        const jacketConfig = orderData.order.items[0].jacketConfig;
-
-        // تنظيف البيانات من التكرارات
-        const cleanedConfig = cleanupJacketData(jacketConfig);
-
-        // التحقق من سلامة البيانات
-        const validation = validateDataIntegrity(cleanedConfig);
-        if (!validation.isValid) {
-          console.warn("Data integrity issues found:", validation.issues);
-        }
-
-        // مسح البيانات الحالية
-        jacketState.logos.forEach((logo) => removeLogo(logo.id));
-        jacketState.texts.forEach((text) => removeText(text.id));
-
-        // تطبيق الألوان والخامات والمقاس
-        setColor("body", jacketConfig.colors.body);
-        setColor("sleeves", jacketConfig.colors.sleeves);
-        setColor("trim", jacketConfig.colors.trim);
-        setMaterial(
-          "body",
-          jacketConfig.materials.body as "leather" | "cotton"
-        );
-        setMaterial(
-          "sleeves",
-          jacketConfig.materials.sleeves as "leather" | "cotton"
-        );
-        setSize(
-          jacketConfig.size as
-            | "XS"
-            | "S"
-            | "M"
-            | "L"
-            | "XL"
-            | "2XL"
-            | "3XL"
-            | "4XL"
-        );
-
-        // إضافة الشعارات المنظفة
-        cleanedConfig.logos.forEach((logo) => {
-          addLogo({
-            id: logo.id,
-            image: logo.image,
-            position: logo.position as
-              | "chestRight"
-              | "chestLeft"
-              | "backCenter"
-              | "rightSide_top"
-              | "rightSide_middle"
-              | "rightSide_bottom"
-              | "leftSide_top"
-              | "leftSide_middle"
-              | "leftSide_bottom",
-            x: logo.x,
-            y: logo.y,
-            scale: logo.scale,
-            rotation: logo.rotation,
-          });
-        });
-
-        // إضافة النصوص المنظفة
-        cleanedConfig.texts.forEach((text) => {
-          addText({
-            id: text.id,
-            content: text.content,
-            position: text.position as
-              | "chestRight"
-              | "chestLeft"
-              | "backBottom",
-            x: text.x,
-            y: text.y,
-            scale: text.scale,
-            font: text.font,
-            color: text.color,
-            isConnected: text.isConnected,
-            charStyles: text.charStyles,
-          });
-        });
-
-        // تعيين العرض الحالي - دائماً نبدأ بالموضع الأمامي في صفحات التعديل
-        setCurrentView("front");
+        await applyJacketConfig(orderData.order.items[0].jacketConfig);
       }
 
       setIsDataLoaded(true);
@@ -236,20 +276,7 @@ const TemporaryOrderEditContent: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [
-    token,
-    isDataLoaded,
-    jacketState.logos,
-    jacketState.texts,
-    removeLogo,
-    removeText,
-    setColor,
-    setMaterial,
-    setSize,
-    addLogo,
-    addText,
-    setCurrentView,
-  ]);
+  }, [token, isDataLoaded, applyJacketConfig]);
 
   useEffect(() => {
     if (!isDataLoaded && token) {
@@ -481,7 +508,7 @@ const TemporaryOrderEditContent: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-[#563660] mx-auto mb-4" />
-          <p className="text-gray-600">جاري تحميل بيانات الطلب...</p>
+          <p className="text-gray-600">جاري تحميل بيانات التصميم...</p>
           <p className="text-sm text-gray-500 mt-2">يرجى الانتظار...</p>
         </div>
       </div>
