@@ -99,7 +99,6 @@ class OrderModel {
         ],
         estimatedDelivery: this.calculateEstimatedDelivery(),
         notes: [],
-        backupImages: [],
       });
 
       const savedOrder = await newOrder.save();
@@ -113,38 +112,6 @@ class OrderModel {
     }
   }
 
-  /**
-   * تحديث معلومات الصور المنسوخة للطلب باستخدام معرف الطلب
-   */
-  async updateOrderBackupImages(orderId, backupImagesInfo) {
-    try {
-      const order = await OrderSchema.findOne({ id: orderId });
-
-      if (!order) {
-        throw new Error("الطلب غير موجود");
-      }
-
-      order.backupImages = backupImagesInfo.map((info) => ({
-        originalPublicId: info.originalPublicId,
-        backupPublicId: info.newPublicId,
-        backupUrl: info.newUrl,
-        copiedAt: new Date(),
-        size: info.size,
-        format: info.format,
-      }));
-
-      order.updatedAt = new Date();
-
-      const updatedOrder = await order.save();
-
-      return {
-        ...updatedOrder.toObject(),
-        _id: undefined,
-      };
-    } catch (error) {
-      throw new Error("فشل في تحديث معلومات الصور المنسوخة");
-    }
-  }
   /**
    * الحصول على طلب بواسطة رقم الطلب
    */

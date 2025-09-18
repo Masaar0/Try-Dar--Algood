@@ -245,16 +245,6 @@ const orderSchema = new mongoose.Schema({
     type: Date,
   },
   notes: [noteSchema],
-  backupImages: [
-    {
-      originalPublicId: { type: String },
-      backupPublicId: { type: String },
-      backupUrl: { type: String },
-      copiedAt: { type: Date, default: Date.now },
-      size: { type: Number },
-      format: { type: String },
-    },
-  ],
 });
 
 // إنشاء فهارس مركبة للبحث السريع

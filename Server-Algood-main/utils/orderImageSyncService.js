@@ -231,30 +231,6 @@ class OrderImageSyncService {
   }
 
   /**
-   * تحديث معلومات الصور المنسوخة في قاعدة البيانات
-   */
-  async updateOrderBackupImagesInDB(orderId, backupImagesInfo) {
-    try {
-      const updatedOrder = await OrderModel.updateOrderBackupImages(
-        orderId,
-        backupImagesInfo
-      );
-
-      return {
-        success: true,
-        updatedOrder,
-        message: `تم تحديث معلومات ${backupImagesInfo.length} صورة في قاعدة البيانات`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        message: "فشل في تحديث معلومات الصور في قاعدة البيانات",
-      };
-    }
-  }
-
-  /**
    * مزامنة شاملة لصور الطلب عند التعديل
    */
   async syncOrderImages(orderId, oldJacketConfig, newJacketConfig) {
@@ -401,35 +377,14 @@ class OrderImageSyncService {
                 startTime: new Date(),
               });
 
-              try {
-                const dbUpdateResult = await this.updateOrderBackupImagesInDB(
-                  orderId,
-                  copyResult.successfulCopies
-                );
-
-                syncLog.steps[dbStepIndex].endTime = new Date();
-                syncLog.steps[dbStepIndex].success = dbUpdateResult.success;
-                syncLog.steps[dbStepIndex].details = {
-                  updatedImagesCount: copyResult.successfulCopies.length,
-                };
-
-                if (dbUpdateResult.success) {
-                  syncLog.summary.successfulSteps++;
-                } else {
-                  syncLog.summary.failedSteps++;
-                  syncLog.summary.warnings.push(
-                    "فشل في تحديث معلومات الصور في قاعدة البيانات"
-                  );
-                }
-              } catch (error) {
-                syncLog.steps[dbStepIndex].endTime = new Date();
-                syncLog.steps[dbStepIndex].success = false;
-                syncLog.steps[dbStepIndex].error = error.message;
-                syncLog.summary.failedSteps++;
-                syncLog.summary.warnings.push(
-                  `خطأ في تحديث قاعدة البيانات: ${error.message}`
-                );
-              }
+              // تم حذف تحديث قاعدة البيانات للصور المنسوخة
+              syncLog.steps[dbStepIndex].endTime = new Date();
+              syncLog.steps[dbStepIndex].success = true;
+              syncLog.steps[dbStepIndex].details = {
+                updatedImagesCount: copyResult.successfulCopies.length,
+                note: "تم حذف تحديث قاعدة البيانات للصور المنسوخة",
+              };
+              syncLog.summary.successfulSteps++;
             }
           } else {
             syncLog.summary.failedSteps++;
@@ -601,9 +556,9 @@ class OrderImageSyncService {
         };
 
         if (copyResult.success && copyResult.successfulCopies.length > 0) {
-          await this.updateOrderBackupImagesInDB(
-            orderId,
-            copyResult.successfulCopies
+          // تم حذف تحديث قاعدة البيانات للصور المنسوخة
+          console.log(
+            `تم نسخ ${copyResult.successfulCopies.length} صورة بنجاح`
           );
         }
       }
