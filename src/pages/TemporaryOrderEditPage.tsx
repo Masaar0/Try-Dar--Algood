@@ -299,9 +299,6 @@ const TemporaryOrderEditContent: React.FC = () => {
         totalPrice: jacketState.totalPrice,
       };
 
-      // إظهار رسالة فورية للمستخدم
-      setSaveMessage("جاري حفظ التعديلات...");
-
       const updateResult =
         await temporaryLinkService.updateOrderByTemporaryLink(
           token,
@@ -336,9 +333,15 @@ const TemporaryOrderEditContent: React.FC = () => {
         }
       }
 
-      setSaveMessage(message);
+      // إغلاق النافذة أولاً
+      saveConfirmModal.closeModal();
       setShowMobileDetails(false);
-      setTimeout(() => setSaveMessage(""), 5000);
+
+      // ثم إظهار رسالة النجاح بعد إغلاق النافذة
+      setTimeout(() => {
+        setSaveMessage(message);
+        setTimeout(() => setSaveMessage(""), 5000);
+      }, 100); // تأخير قصير لضمان إغلاق النافذة أولاً
     } catch (error) {
       setError(error instanceof Error ? error.message : "فشل في حفظ التغييرات");
 
@@ -348,7 +351,6 @@ const TemporaryOrderEditContent: React.FC = () => {
       }
     } finally {
       setIsSaving(false);
-      saveConfirmModal.closeModal();
     }
   };
 
