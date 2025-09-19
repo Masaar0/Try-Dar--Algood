@@ -76,17 +76,17 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
     []
   );
 
-  // دالة لمحاكاة حركة صغيرة لتفعيل completedCrop
+  // دالة محسنة لمحاكاة حركة صغيرة لتفعيل completedCrop
   const simulateSmallCropMovement = useCallback(
     (initialCrop: Crop) => {
       if (!imgRef.current) return;
 
       const { width, height } = imgRef.current;
 
-      // حركة صغيرة جداً (0.1 بكسل تقريباً)
-      const microMovement = (0.1 / Math.max(width, height)) * 100; // تحويل إلى نسبة مئوية
+      // حركة ثابتة صغيرة لتقليل العمليات الحسابية
+      const microMovement = 0.01; // قيمة ثابتة بدلاً من حساب معقد
 
-      // إنشاء crop بحركة صغيرة
+      // إنشاء crop بحركة صغيرة مع تقليل العمليات الحسابية
       const movedCrop: Crop = {
         ...initialCrop,
         x: Math.max(
@@ -99,14 +99,14 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
         ),
       };
 
-      // تطبيق الحركة مع تأخير قصير
-      setTimeout(() => {
+      // استخدام requestAnimationFrame بدلاً من setTimeout لتحسين الأداء
+      requestAnimationFrame(() => {
         setCrop(movedCrop);
         const completedCrop = calculateCompletedCrop(movedCrop, width, height);
         setCompletedCrop(completedCrop);
 
-        // العودة للموضع الأصلي بعد تأخير قصير
-        setTimeout(() => {
+        // العودة للموضع الأصلي مع تأخير أقل
+        requestAnimationFrame(() => {
           setCrop(initialCrop);
           const originalCompletedCrop = calculateCompletedCrop(
             initialCrop,
@@ -114,8 +114,8 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
             height
           );
           setCompletedCrop(originalCompletedCrop);
-        }, 50);
-      }, 100);
+        });
+      });
     },
     [calculateCompletedCrop]
   );
@@ -214,20 +214,24 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
     }
   };
 
-  // ⭐ تعديل دالة onChange لضمان تحديث completedCrop
+  // دالة محسنة لتغيير القص مع تقليل العمليات الحسابية
   const handleCropChange = useCallback(
     (_c: PixelCrop, percentCrop: Crop) => {
       setCrop(percentCrop);
 
-      // إذا كان لدينا المرجع للصورة، احسب completedCrop فورًا
-      if (imgRef.current && percentCrop.width && percentCrop.height) {
+      // تحقق مبسط لتقليل العمليات الحسابية
+      if (imgRef.current && percentCrop.width > 0 && percentCrop.height > 0) {
         const { width, height } = imgRef.current;
-        const newCompletedCrop = calculateCompletedCrop(
-          percentCrop,
-          width,
-          height
-        );
-        setCompletedCrop(newCompletedCrop);
+
+        // استخدام requestAnimationFrame لتأجيل الحسابات الثقيلة
+        requestAnimationFrame(() => {
+          const newCompletedCrop = calculateCompletedCrop(
+            percentCrop,
+            width,
+            height
+          );
+          setCompletedCrop(newCompletedCrop);
+        });
       }
     },
     [calculateCompletedCrop]
@@ -321,7 +325,14 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
         }
       }
 
-      const croppedDataUrl = canvas.toDataURL("image/png", 1.0);
+      // تحديد نوع الصورة الأصلية للحفاظ على نفس التنسيق
+      const originalMimeType = imageFile.type || "image/jpeg";
+      const outputFormat = originalMimeType.includes("png")
+        ? "image/png"
+        : "image/jpeg";
+      const quality = originalMimeType.includes("png") ? 1.0 : 0.95; // جودة أقل قليلاً لـ JPEG لتقليل الحجم
+
+      const croppedDataUrl = canvas.toDataURL(outputFormat, quality);
       onCropComplete(croppedDataUrl, imageFile);
       onClose();
     } catch (error) {
@@ -343,7 +354,8 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
     }
   };
 
-  const getImageDisplayStyle = () => {
+  // دالة محسنة لحساب أسلوب عرض الصورة مع تقليل العمليات الحسابية
+  const getImageDisplayStyle = useCallback(() => {
     if (!containerRef.current) {
       return {
         maxWidth: "100%",
@@ -353,9 +365,10 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
       };
     }
 
+    // استخدام getBoundingClientRect مرة واحدة فقط
     const containerRect = containerRef.current.getBoundingClientRect();
-    const containerWidth = containerRect.width - 40;
-    const containerHeight = containerRect.height - 40;
+    const containerWidth = Math.max(containerRect.width - 40, 200); // حد أدنى
+    const containerHeight = Math.max(containerRect.height - 40, 200); // حد أدنى
 
     return {
       maxWidth: `${containerWidth}px`,
@@ -364,7 +377,7 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
       height: "auto",
       objectFit: "contain" as const,
     };
-  };
+  }, []); // إزالة الاعتماديات لتقليل إعادة الحساب
 
   if (!isOpen) return null;
 

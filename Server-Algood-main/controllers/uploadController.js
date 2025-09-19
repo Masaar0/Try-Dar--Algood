@@ -21,14 +21,15 @@ export const uploadSingleImage = async (req, res) => {
       quality: "100",
       fetch_format: "auto",
       flags: "progressive:none",
-      transformation: [
-        {
-          width: 1000,
-          height: 1000,
-          crop: "limit",
-          quality: "100",
-        },
-      ],
+      // إزالة التحويلات الإجبارية للحفاظ على الأبعاد الأصلية
+      // transformation: [
+      //   {
+      //     width: 1000,
+      //     height: 1000,
+      //     crop: "limit",
+      //     quality: "100",
+      //   },
+      // ],
     };
 
     const result = await cloudinary.uploader.upload(fileStr, uploadOptions);
@@ -85,14 +86,15 @@ export const uploadMultipleImages = async (req, res) => {
         quality: "100",
         fetch_format: "auto",
         flags: "progressive:none",
-        transformation: [
-          {
-            width: 1000,
-            height: 1000,
-            crop: "limit",
-            quality: "100",
-          },
-        ],
+        // إزالة التحويلات الإجبارية للحفاظ على الأبعاد الأصلية
+        // transformation: [
+        //   {
+        //     width: 1000,
+        //     height: 1000,
+        //     crop: "limit",
+        //     quality: "100",
+        //   },
+        // ],
       };
 
       const result = await cloudinary.uploader.upload(fileStr, uploadOptions);

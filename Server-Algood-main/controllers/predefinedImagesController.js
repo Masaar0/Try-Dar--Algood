@@ -11,7 +11,6 @@ const DEFAULT_PREDEFINED_IMAGES = [];
 export const initializeDefaultImages = async () => {
   try {
     // لا توجد شعارات افتراضية للتهيئة حالياً
-    console.log("لا توجد شعارات افتراضية للتهيئة");
   } catch (error) {
     throw new Error("فشل في تهيئة الشعارات الجاهزة");
   }
@@ -92,14 +91,15 @@ export const addPredefinedImage = async (req, res) => {
       quality: "100",
       fetch_format: "auto",
       flags: "progressive:none",
-      transformation: [
-        {
-          width: 1000,
-          height: 1000,
-          crop: "limit",
-          quality: "100",
-        },
-      ],
+      // إزالة التحويلات الإجبارية للحفاظ على الأبعاد الأصلية
+      // transformation: [
+      //   {
+      //     width: 1000,
+      //     height: 1000,
+      //     crop: "limit",
+      //     quality: "100",
+      //   },
+      // ],
     };
 
     const result = await cloudinary.uploader.upload(fileStr, uploadOptions);

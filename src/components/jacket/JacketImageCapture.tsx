@@ -183,8 +183,8 @@ const JacketImageCapture = forwardRef<
 
     try {
       const dataUrl = await htmlToImage.toPng(container, {
-        quality: 1.0,
-        pixelRatio: 3,
+        quality: 0.95, // تقليل الجودة قليلاً لتقليل حجم الملف
+        pixelRatio: 2, // تقليل pixelRatio من 3 إلى 2 لتقليل الحجم
         width: 320,
         height: 410,
         backgroundColor: "#f9fafb",

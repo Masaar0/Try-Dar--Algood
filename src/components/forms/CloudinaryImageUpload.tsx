@@ -77,10 +77,10 @@ const CloudinaryImageUpload: React.FC<CloudinaryImageUploadProps> = ({
     return null;
   };
 
-  // تحويل Data URL إلى File
+  // تحويل Data URL إلى File مع الحفاظ على نوع الصورة الأصلية
   const dataURLtoFile = (dataurl: string, filename: string): File => {
     const arr = dataurl.split(",");
-    const mime = arr[0].match(/:(.*?);/)?.[1] || "image/png";
+    const mime = arr[0].match(/:(.*?);/)?.[1] || "image/jpeg"; // افتراضي JPEG بدلاً من PNG
     const bstr = atob(arr[1]);
     let n = bstr.length;
     const u8arr = new Uint8Array(n);

@@ -38,7 +38,7 @@
   unicode-range: U+0600-06FF, U+200C-200E, U+2010-2011, U+204F, U+2E41,
     U+FB50-FDFF, U+FE80-FEFC;
 }
-/* React Image Crop Styles */
+/* React Image Crop Styles - محسنة للأداء مع الحفاظ على الوظائف */
 .ReactCrop {
   display: inline-block;
   position: relative;
@@ -48,7 +48,8 @@
   touch-action: none;
   border-radius: 8px;
   overflow: hidden;
-  transition: all 0.2s ease;
+  /* إزالة التحولات المفرطة فقط */
+  transition: none;
 }
 
 .ReactCrop * {
@@ -61,7 +62,8 @@
   height: auto;
   max-width: 100%;
   max-height: 100%;
-  transition: transform 0.2s ease;
+  /* إزالة التحولات المفرطة فقط */
+  transition: none;
 }
 
 .ReactCrop__crop-selection {
@@ -74,7 +76,8 @@
   box-shadow: 0 0 0 9999em rgba(0, 0, 0, 0.3);
   border: 2px solid #563660;
   border-radius: 4px;
-  transition: border-color 0.2s ease;
+  /* إزالة التحولات المفرطة فقط */
+  transition: none;
   backdrop-filter: none;
 }
 
@@ -93,8 +96,9 @@
   border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  /* إزالة التحولات المفرطة فقط */
   transition: none;
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
   opacity: 1;
   transform: scale(1);
 }
@@ -272,11 +276,14 @@
   left: -50%;
 }
 
-/* إزالة جميع التأثيرات والانيميشن للحصول على تجربة سلسة */
+/* إزالة التحولات المفرطة فقط للحصول على أداء أفضل */
 .ReactCrop__drag-handle,
-.ReactCrop__crop-selection {
+.ReactCrop__crop-selection,
+.ReactCrop,
+.ReactCrop__image {
   transition: none !important;
   animation: none !important;
+  /* الحفاظ على will-change للعناصر المهمة فقط */
 }
 
 /* تحسين الاستجابة للمس */

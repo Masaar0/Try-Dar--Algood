@@ -556,10 +556,7 @@ class OrderImageSyncService {
         };
 
         if (copyResult.success && copyResult.successfulCopies.length > 0) {
-          // تم حذف تحديث قاعدة البيانات للصور المنسوخة
-          console.log(
-            `تم نسخ ${copyResult.successfulCopies.length} صورة بنجاح`
-          );
+          // تم نسخ الصور بنجاح
         }
       }
 
