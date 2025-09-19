@@ -249,10 +249,18 @@ class OrderModel {
         ORDER_STATUSES.CANCELLED,
       ],
       [ORDER_STATUSES.CONFIRMED]: [
-        ORDER_STATUSES.PROCESSING,
+        ORDER_STATUSES.IN_PRODUCTION,
         ORDER_STATUSES.CANCELLED,
       ],
-      [ORDER_STATUSES.PROCESSING]: [
+      [ORDER_STATUSES.IN_PRODUCTION]: [
+        ORDER_STATUSES.QUALITY_CHECK,
+        ORDER_STATUSES.CANCELLED,
+      ],
+      [ORDER_STATUSES.QUALITY_CHECK]: [
+        ORDER_STATUSES.READY_TO_SHIP,
+        ORDER_STATUSES.CANCELLED,
+      ],
+      [ORDER_STATUSES.READY_TO_SHIP]: [
         ORDER_STATUSES.SHIPPED,
         ORDER_STATUSES.CANCELLED,
       ],
@@ -263,8 +271,6 @@ class OrderModel {
       [ORDER_STATUSES.DELIVERED]: [], // لا يمكن تغيير حالة الطلب بعد التسليم
       [ORDER_STATUSES.CANCELLED]: [], // لا يمكن تغيير حالة الطلب الملغي
       [ORDER_STATUSES.RETURNED]: [], // لا يمكن تغيير حالة الطلب المرتجع
-      [ORDER_STATUSES.REFUNDED]: [], // لا يمكن تغيير حالة الطلب المسترد
-      [ORDER_STATUSES.EXCHANGED]: [], // لا يمكن تغيير حالة الطلب المبدل
     };
 
     return validTransitions[currentStatus]?.includes(newStatus) || false;

@@ -640,15 +640,15 @@ const OrdersManagement: React.FC = () => {
   // Reload data when page changes (with cache)
   useEffect(() => {
     if (activeTab === "confirmed") {
-      loadOrders();
+      loadOrders(false, searchTerm, statusFilter);
     }
-  }, [currentPage, statusFilter, loadOrders]);
+  }, [currentPage, statusFilter, loadOrders, searchTerm]);
 
   useEffect(() => {
     if (activeTab === "pending") {
-      loadPendingOrders();
+      loadPendingOrders(false, searchTerm);
     }
-  }, [pendingCurrentPage, loadPendingOrders]);
+  }, [pendingCurrentPage, loadPendingOrders, searchTerm]);
 
   const handleTabSwitch = (tab: "confirmed" | "pending") => {
     setActiveTab(tab);
@@ -744,13 +744,20 @@ const OrdersManagement: React.FC = () => {
       // إعادة تحميل البيانات بدون فلترة
       if (activeTab === "confirmed") {
         setCurrentPage(1);
-        loadOrders(true, "", "");
+        loadOrders(true, "", statusFilter);
       } else {
         setPendingCurrentPage(1);
         loadPendingOrders(true, "");
       }
     }
-  }, [searchTerm, hasActiveSearch, activeTab, loadOrders, loadPendingOrders]);
+  }, [
+    searchTerm,
+    hasActiveSearch,
+    activeTab,
+    loadOrders,
+    loadPendingOrders,
+    statusFilter,
+  ]);
 
   const handlePageChange = useCallback(
     (page: number) => {
@@ -772,13 +779,13 @@ const OrdersManagement: React.FC = () => {
       setStatusFilter(status);
       if (activeTab === "confirmed") {
         setCurrentPage(1);
-        loadOrders(true); // إجبار التحديث للتصفية الجديدة
+        loadOrders(true, searchTerm, status); // تمرير status الجديد
       } else {
         setPendingCurrentPage(1);
-        loadPendingOrders(true); // إجبار التحديث للتصفية الجديدة
+        loadPendingOrders(true, searchTerm); // إجبار التحديث للتصفية الجديدة
       }
     },
-    [activeTab, loadOrders, loadPendingOrders]
+    [activeTab, loadOrders, loadPendingOrders, searchTerm]
   );
 
   const handleViewOrder = (order: OrderData) => {
