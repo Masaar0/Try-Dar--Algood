@@ -20,6 +20,11 @@ const DEFAULT_PRICING = {
 };
 
 class PricingModel {
+  // كاش للبيانات المحسوبة
+  static pricingCache = null;
+  static cacheTimestamp = null;
+  static CACHE_DURATION = 2 * 60 * 1000; // دقيقتان
+
   /**
    * تهيئة بيانات التسعير الافتراضية
    */
@@ -39,10 +44,20 @@ class PricingModel {
   }
 
   /**
-   * قراءة بيانات التسعير
+   * قراءة بيانات التسعير - محسن مع الكاش
    */
   async getPricing() {
     try {
+      // التحقق من الكاش أولاً
+      const now = Date.now();
+      if (
+        PricingModel.pricingCache &&
+        PricingModel.cacheTimestamp &&
+        now - PricingModel.cacheTimestamp < PricingModel.CACHE_DURATION
+      ) {
+        return PricingModel.pricingCache;
+      }
+
       const pricing = await PricingSchema.findOne({
         id: "pricing_config",
       }).lean();
@@ -52,23 +67,36 @@ class PricingModel {
         const newPricing = await PricingSchema.findOne({
           id: "pricing_config",
         }).lean();
-        return {
+
+        const result = {
           ...newPricing,
           _id: undefined,
         };
+
+        // حفظ في الكاش
+        PricingModel.pricingCache = result;
+        PricingModel.cacheTimestamp = now;
+
+        return result;
       }
 
-      return {
+      const result = {
         ...pricing,
         _id: undefined,
       };
+
+      // حفظ في الكاش
+      PricingModel.pricingCache = result;
+      PricingModel.cacheTimestamp = now;
+
+      return result;
     } catch (error) {
       return DEFAULT_PRICING;
     }
   }
 
   /**
-   * تحديث بيانات التسعير
+   * تحديث بيانات التسعير - محسن مع مسح الكاش
    */
   async updatePricing(updates, updatedBy = "admin") {
     try {
@@ -85,6 +113,10 @@ class PricingModel {
           lean: true,
         }
       );
+
+      // مسح الكاش بعد التحديث
+      PricingModel.pricingCache = null;
+      PricingModel.cacheTimestamp = null;
 
       return {
         ...updatedPricing,
@@ -210,7 +242,7 @@ class PricingModel {
   }
 
   /**
-   * إعادة تعيين إلى القيم الافتراضية
+   * إعادة تعيين إلى القيم الافتراضية - محسن مع مسح الكاش
    */
   async resetToDefaults(updatedBy = "admin") {
     try {
@@ -229,6 +261,10 @@ class PricingModel {
           lean: true,
         }
       );
+
+      // مسح الكاش بعد إعادة التعيين
+      PricingModel.pricingCache = null;
+      PricingModel.cacheTimestamp = null;
 
       return {
         ...updatedPricing,

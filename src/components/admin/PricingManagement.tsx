@@ -24,18 +24,43 @@ const PricingManagement: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [pricingError, setPricingError] = useState("");
+  const [pricingCache, setPricingCache] = useState<{
+    data: PricingData;
+    timestamp: number;
+  } | null>(null);
   const resetPricingModal = useModal();
 
   useEffect(() => {
     loadPricingData();
   }, []);
 
-  const loadPricingData = async () => {
+  const loadPricingData = async (forceRefresh = false) => {
     setIsLoadingPricing(true);
     setPricingError("");
+
     try {
+      // التحقق من كاش التسعير أولاً
+      const PRICING_CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+      const now = Date.now();
+
+      if (
+        !forceRefresh &&
+        pricingCache &&
+        now - pricingCache.timestamp < PRICING_CACHE_DURATION
+      ) {
+        setPricingData(pricingCache.data);
+        setIsLoadingPricing(false);
+        return;
+      }
+
       const data = await pricingService.getPricing();
       setPricingData(data);
+
+      // حفظ في كاش التسعير
+      setPricingCache({
+        data: data,
+        timestamp: now,
+      });
     } catch (error) {
       setPricingError(
         error instanceof Error ? error.message : "فشل في تحميل بيانات التسعير"
@@ -61,6 +86,13 @@ const PricingManagement: React.FC = () => {
         token
       );
       setPricingData(updatedData);
+
+      // تحديث الكاش مع البيانات الجديدة
+      setPricingCache({
+        data: updatedData,
+        timestamp: Date.now(),
+      });
+
       setSaveMessage("تم حفظ التغييرات بنجاح");
       setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
@@ -82,6 +114,13 @@ const PricingManagement: React.FC = () => {
 
       const resetData = await pricingService.resetPricing(token);
       setPricingData(resetData);
+
+      // تحديث الكاش مع البيانات الجديدة
+      setPricingCache({
+        data: resetData,
+        timestamp: Date.now(),
+      });
+
       setSaveMessage("تم إعادة تعيين الأسعار بنجاح");
       setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
@@ -148,6 +187,18 @@ const PricingManagement: React.FC = () => {
           >
             <RotateCcw className="w-4 h-4" />
             إعادة تعيين
+          </button>
+          <button
+            onClick={() => loadPricingData(true)}
+            disabled={isLoadingPricing}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 text-sm"
+          >
+            {isLoadingPricing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RotateCcw className="w-4 h-4" />
+            )}
+            تحديث
           </button>
         </div>
       </div>
@@ -426,6 +477,14 @@ const PricingManagement: React.FC = () => {
                     return `${year}/${month}/${day}`;
                   })()}
                 </p>
+                {pricingCache && (
+                  <p className="text-white text-opacity-70 text-xs mt-1">
+                    البيانات محفوظة في الكاش - آخر تحديث:{" "}
+                    {new Date(pricingCache.timestamp).toLocaleTimeString(
+                      "ar-SA"
+                    )}
+                  </p>
+                )}
               </div>
             </div>
 

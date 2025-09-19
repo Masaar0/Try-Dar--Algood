@@ -35,6 +35,11 @@ const PredefinedImagesManagement: React.FC = () => {
     useState<string>("all");
   const [imagesError, setImagesError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
+  const [imagesCache, setImagesCache] = useState<{
+    images: PredefinedImageData[];
+    categories: CategoryData[];
+    timestamp: number;
+  } | null>(null);
   const [newImageData, setNewImageData] = useState({
     name: "",
     categoryId: "logos",
@@ -62,13 +67,34 @@ const PredefinedImagesManagement: React.FC = () => {
     loadPredefinedImagesAndCategories();
   }, []);
 
-  const loadPredefinedImagesAndCategories = async () => {
+  const loadPredefinedImagesAndCategories = async (forceRefresh = false) => {
     setImagesError("");
     try {
+      // التحقق من كاش الشعارات أولاً
+      const IMAGES_CACHE_DURATION = 3 * 60 * 1000; // 3 دقائق
+      const now = Date.now();
+
+      if (
+        !forceRefresh &&
+        imagesCache &&
+        now - imagesCache.timestamp < IMAGES_CACHE_DURATION
+      ) {
+        setPredefinedImages(imagesCache.images);
+        setCategories(imagesCache.categories);
+        return;
+      }
+
       const data =
         await predefinedImagesService.loadPredefinedImagesWithCategories();
       setPredefinedImages(data.images);
       setCategories(data.categories);
+
+      // حفظ في كاش الشعارات
+      setImagesCache({
+        images: data.images,
+        categories: data.categories,
+        timestamp: now,
+      });
     } catch (error) {
       setImagesError(
         error instanceof Error ? error.message : "فشل في تحميل البيانات"
@@ -115,6 +141,16 @@ const PredefinedImagesManagement: React.FC = () => {
       );
 
       setPredefinedImages((prev) => [newImage, ...prev]);
+
+      // تحديث الكاش مع الصورة الجديدة
+      if (imagesCache) {
+        setImagesCache({
+          ...imagesCache,
+          images: [newImage, ...imagesCache.images],
+          timestamp: Date.now(),
+        });
+      }
+
       setSaveMessage("تم إضافة الشعار الجاهز بنجاح");
       setNewImageData({
         name: "",
@@ -141,6 +177,16 @@ const PredefinedImagesManagement: React.FC = () => {
     setPredefinedImages((prev) =>
       prev.filter((img) => img.id !== imageToDelete.id)
     );
+
+    // تحديث الكاش مع إزالة الصورة
+    if (imagesCache) {
+      setImagesCache({
+        ...imagesCache,
+        images: imagesCache.images.filter((img) => img.id !== imageToDelete.id),
+        timestamp: Date.now(),
+      });
+    }
+
     setSaveMessage("تم حذف الشعار الجاهز بنجاح");
     setTimeout(() => setSaveMessage(""), 3000);
 
@@ -154,6 +200,16 @@ const PredefinedImagesManagement: React.FC = () => {
     } catch (error) {
       // في حالة فشل الحذف من الخادم، إعادة الصورة للواجهة
       setPredefinedImages((prev) => [...prev, imageToDelete]);
+
+      // إعادة الصورة للكاش أيضاً
+      if (imagesCache) {
+        setImagesCache({
+          ...imagesCache,
+          images: [...imagesCache.images, imageToDelete],
+          timestamp: Date.now(),
+        });
+      }
+
       setImagesError(
         error instanceof Error ? error.message : "فشل في حذف الشعار من الخادم"
       );
@@ -178,6 +234,17 @@ const PredefinedImagesManagement: React.FC = () => {
           img.id === selectedImageForEdit.id ? updatedImage : img
         )
       );
+
+      // تحديث الكاش مع الصورة المحدثة
+      if (imagesCache) {
+        setImagesCache({
+          ...imagesCache,
+          images: imagesCache.images.map((img) =>
+            img.id === selectedImageForEdit.id ? updatedImage : img
+          ),
+          timestamp: Date.now(),
+        });
+      }
 
       setSaveMessage("تم تحديث الشعار بنجاح");
       setTimeout(() => setSaveMessage(""), 3000);
@@ -249,7 +316,7 @@ const PredefinedImagesManagement: React.FC = () => {
             إضافة شعار
           </button>
           <button
-            onClick={loadPredefinedImagesAndCategories}
+            onClick={() => loadPredefinedImagesAndCategories(true)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all duration-200 text-sm"
           >
             <RotateCcw className="w-4 h-4" />
@@ -366,7 +433,7 @@ const PredefinedImagesManagement: React.FC = () => {
                       src={image.url}
                       alt={image.name}
                       className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                      loading="eager"
+                      loading="lazy"
                       decoding="async"
                     />
                   </div>

@@ -41,17 +41,16 @@ import { useOrdersCache } from "../../hooks/useOrdersCache";
 
 const OrdersManagement: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    getFromCache,
-    setCache,
-    invalidateCache,
-    isLoading: cacheLoading,
-  } = useOrdersCache();
+  const { getFromCache, setCache, isLoading: cacheLoading } = useOrdersCache();
 
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [pendingOrders, setPendingOrders] = useState<OrderData[]>([]);
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [statsCache, setStatsCache] = useState<{
+    data: OrderStats;
+    timestamp: number;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPending, setIsLoadingPending] = useState(false);
   const [error, setError] = useState("");
@@ -86,6 +85,7 @@ const OrdersManagement: React.FC = () => {
     Map<string, { link: string; timestamp: number }>
   >(new Map());
   const [hasActiveSearch, setHasActiveSearch] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState<number | null>(null);
 
   useEffect(() => {
     // حل مشكلة التمرير على الهواتف
@@ -562,14 +562,34 @@ const OrdersManagement: React.FC = () => {
     [pendingCurrentPage, ordersPerPage, searchTerm, getFromCache, setCache]
   );
 
-  const loadStats = async () => {
+  const loadStats = async (forceRefresh = false) => {
     setIsLoadingStats(true);
     try {
       const token = authService.getToken();
       if (!token) return;
 
+      // التحقق من كاش الإحصائيات أولاً
+      const STATS_CACHE_DURATION = 2 * 60 * 1000; // دقيقتان
+      const now = Date.now();
+
+      if (
+        !forceRefresh &&
+        statsCache &&
+        now - statsCache.timestamp < STATS_CACHE_DURATION
+      ) {
+        setStats(statsCache.data);
+        setIsLoadingStats(false);
+        return;
+      }
+
       const statsData = await orderService.getOrderStats(token);
       setStats(statsData);
+
+      // حفظ في كاش الإحصائيات
+      setStatsCache({
+        data: statsData,
+        timestamp: now,
+      });
     } catch (error) {
       console.error("Error loading stats:", error);
     } finally {
@@ -577,59 +597,40 @@ const OrdersManagement: React.FC = () => {
     }
   };
 
-  // دالة لتحديث الأعداد في الوقت الفعلي
-  const updateOrderCounts = async () => {
-    try {
-      const token = authService.getToken();
-      if (!token) return;
-
-      // تحديث عدد الطلبات المؤكدة
-      const confirmedResult = await orderService.getAllOrders(token, {
-        page: 1,
-        limit: 1,
-        status: "",
-        includePending: false,
-      });
-      setTotalOrders(confirmedResult.pagination.totalOrders);
-
-      // تحديث عدد الطلبات قيد المراجعة
-      const pendingResult = await orderService.getAllOrders(token, {
-        page: 1,
-        limit: 1,
-        status: "pending",
-        includePending: true,
-      });
-      setTotalPendingOrders(pendingResult.pagination.totalOrders);
-    } catch (error) {
-      console.error("Error updating order counts:", error);
-    }
-  };
-
-  // دالة لتحديث كل البيانات بعد أي تغيير مع مسح الكاش
+  // دالة محسنة لتحديث كل البيانات - لا تمسح الكاش بالكامل
   const refreshAllData = useCallback(async () => {
-    // مسح الكاش قبل التحديث
-    invalidateCache();
-
+    // لا تمسح الكاش بالكامل، فقط حدث البيانات المطلوبة
     await Promise.all([
       loadOrders(true), // تحديث الطلبات المؤكدة مع إجبار التحديث
       loadPendingOrders(true), // تحديث الطلبات قيد المراجعة مع إجبار التحديث
-      loadStats(), // تحديث الإحصائيات
-      updateOrderCounts(), // تحديث الأعداد
+      loadStats(true), // تحديث الإحصائيات مع إجبار التحديث
     ]);
-  }, [loadOrders, loadPendingOrders, invalidateCache]);
+  }, [loadOrders, loadPendingOrders]);
 
-  // Initial load - load both confirmed and pending orders
+  // Initial load - تحميل تدريجي محسن للأداء
   useEffect(() => {
     const initializeData = async () => {
+      // تحميل الطلبات أولاً (الأولوية العالية)
       await Promise.all([
         loadOrders(), // Load confirmed orders
         loadPendingOrders(), // Load pending orders
-        loadStats(), // Load statistics
       ]);
+
+      // تحميل الإحصائيات بعد ذلك (أولوية أقل)
+      setTimeout(() => loadStats(), 100);
     };
 
     initializeData();
   }, []); // Load once on component mount
+
+  // تنظيف timeout عند إلغاء تحميل المكون
+  useEffect(() => {
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchTimeout]);
 
   // Reload data when page changes (with cache)
   useEffect(() => {
@@ -662,7 +663,7 @@ const OrdersManagement: React.FC = () => {
     }
   };
 
-  // البحث اليدوي عند الضغط على Enter أو تغيير الفلترة
+  // البحث اليدوي عند الضغط على Enter أو تغيير الفلترة - محسن مع debounce
   const handleSearch = useCallback(() => {
     // تجاهل البحث إذا كان النص فارغاً أو يحتوي على مسافات فقط
     if (searchTerm.trim() === "") {
@@ -675,14 +676,31 @@ const OrdersManagement: React.FC = () => {
     // استخدام النص المقطوع من المسافات للبحث
     const trimmedSearchTerm = searchTerm.trim();
 
-    if (activeTab === "confirmed") {
-      setCurrentPage(1);
-      loadOrders(true, trimmedSearchTerm, statusFilter); // إجبار التحديث للبحث الجديد
-    } else {
-      setPendingCurrentPage(1);
-      loadPendingOrders(true, trimmedSearchTerm); // إجبار التحديث للبحث الجديد
+    // إلغاء البحث السابق إذا كان موجوداً
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
-  }, [activeTab, searchTerm, statusFilter, loadOrders, loadPendingOrders]);
+
+    // تأخير البحث لتحسين الأداء
+    const timeout = setTimeout(() => {
+      if (activeTab === "confirmed") {
+        setCurrentPage(1);
+        loadOrders(true, trimmedSearchTerm, statusFilter); // إجبار التحديث للبحث الجديد
+      } else {
+        setPendingCurrentPage(1);
+        loadPendingOrders(true, trimmedSearchTerm); // إجبار التحديث للبحث الجديد
+      }
+    }, 300); // تأخير 300ms
+
+    setSearchTimeout(timeout as unknown as number);
+  }, [
+    activeTab,
+    searchTerm,
+    statusFilter,
+    loadOrders,
+    loadPendingOrders,
+    searchTimeout,
+  ]);
 
   // إلغاء الفلترة والبحث وإعادة البيانات للحالة الطبيعية
   const handleClearFilters = useCallback(() => {
@@ -703,11 +721,12 @@ const OrdersManagement: React.FC = () => {
     }
   }, [activeTab, loadOrders, loadPendingOrders]);
 
-  // مسح البحث والفلترة عند تغيير التبويب
+  // مسح البحث والفلترة عند تغيير التبويب - محسن للأداء
   useEffect(() => {
     setSearchTerm("");
     setHasActiveSearch(false); // إعادة تعيين حالة البحث النشط
     setShowFilters(false); // إخفاء الفلاتر عند التبديل
+    setStatusFilter(""); // مسح فلتر الحالة أيضاً
   }, [activeTab]);
 
   // إلغاء البحث التلقائي عند مسح كل شيء من حقل البحث

@@ -45,6 +45,11 @@ const DEFAULT_CATEGORIES = [
 ];
 
 class CategoryModel {
+  // كاش للبيانات المحسوبة
+  static categoriesCache = null;
+  static cacheTimestamp = null;
+  static CACHE_DURATION = 3 * 60 * 1000; // 3 دقائق
+
   /**
    * تهيئة التصنيفات الافتراضية
    */
@@ -61,22 +66,38 @@ class CategoryModel {
   }
 
   /**
-   * الحصول على جميع التصنيفات
+   * الحصول على جميع التصنيفات - محسن مع الكاش
    */
   async getCategories() {
     try {
+      // التحقق من الكاش أولاً
+      const now = Date.now();
+      if (
+        CategoryModel.categoriesCache &&
+        CategoryModel.cacheTimestamp &&
+        now - CategoryModel.cacheTimestamp < CategoryModel.CACHE_DURATION
+      ) {
+        return CategoryModel.categoriesCache;
+      }
+
       const categories = await CategorySchema.find().sort({ order: 1 }).lean();
-      return categories.map((cat) => ({
+      const result = categories.map((cat) => ({
         ...cat,
         _id: undefined,
       }));
+
+      // حفظ في الكاش
+      CategoryModel.categoriesCache = result;
+      CategoryModel.cacheTimestamp = now;
+
+      return result;
     } catch (error) {
       throw new Error("فشل في الحصول على التصنيفات");
     }
   }
 
   /**
-   * إنشاء تصنيف جديد
+   * إنشاء تصنيف جديد - محسن مع مسح الكاش
    */
   async createCategory(categoryData, createdBy = "admin") {
     try {
@@ -108,6 +129,10 @@ class CategoryModel {
       });
 
       const savedCategory = await newCategory.save();
+
+      // مسح الكاش بعد الإنشاء
+      CategoryModel.categoriesCache = null;
+      CategoryModel.cacheTimestamp = null;
 
       return {
         ...savedCategory.toObject(),

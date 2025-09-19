@@ -512,7 +512,7 @@ class OrderModel {
           .limit(limit)
           .lean()
           .exec(),
-        // حساب العدد الإجمالي
+        // حساب العدد الإجمالي - محسن للأداء
         OrderSchema.countDocuments(searchQuery).exec(),
       ]);
 
@@ -540,24 +540,74 @@ class OrderModel {
     }
   }
   /**
-   * الحصول على إحصائيات الطلبات
+   * الحصول على إحصائيات الطلبات - محسن للأداء
    */
   async getOrderStats() {
     try {
-      const totalOrders = await OrderSchema.countDocuments();
+      const now = new Date();
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-      const statusStats = await OrderSchema.aggregate([
+      // استعلام واحد محسن للحصول على جميع الإحصائيات
+      const statsResult = await OrderSchema.aggregate([
         {
-          $group: {
-            _id: "$status",
-            count: { $sum: 1 },
-            totalValue: { $sum: "$totalPrice" },
+          $facet: {
+            // العدد الإجمالي
+            totalCount: [{ $count: "count" }],
+
+            // إحصائيات الحالات
+            statusStats: [
+              {
+                $group: {
+                  _id: "$status",
+                  count: { $sum: 1 },
+                  totalValue: { $sum: "$totalPrice" },
+                },
+              },
+            ],
+
+            // الطلبات المؤكدة هذا الشهر
+            thisMonthConfirmed: [
+              {
+                $match: {
+                  createdAt: { $gte: thisMonthStart },
+                  status: { $ne: ORDER_STATUSES.PENDING },
+                },
+              },
+              { $count: "count" },
+            ],
+
+            // الطلبات المؤكدة الشهر الماضي
+            lastMonthConfirmed: [
+              {
+                $match: {
+                  createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd },
+                  status: { $ne: ORDER_STATUSES.PENDING },
+                },
+              },
+              { $count: "count" },
+            ],
+
+            // الطلبات قيد المراجعة هذا الشهر
+            pendingThisMonth: [
+              {
+                $match: {
+                  createdAt: { $gte: thisMonthStart },
+                  status: ORDER_STATUSES.PENDING,
+                },
+              },
+              { $count: "count" },
+            ],
           },
         },
       ]);
 
+      const result = statsResult[0];
+
+      // تهيئة الإحصائيات
       const stats = {
-        total: totalOrders,
+        total: result.totalCount[0]?.count || 0,
         pending: 0,
         confirmed: 0,
         inProduction: 0,
@@ -566,16 +616,17 @@ class OrderModel {
         cancelled: 0,
         totalRevenue: 0,
         averageOrderValue: 0,
-        thisMonth: 0,
-        lastMonth: 0,
+        thisMonth: result.thisMonthConfirmed[0]?.count || 0,
+        lastMonth: result.lastMonthConfirmed[0]?.count || 0,
         pendingReview: {
           total: 0,
           totalValue: 0,
-          thisMonth: 0,
+          thisMonth: result.pendingThisMonth[0]?.count || 0,
         },
       };
 
-      statusStats.forEach((stat) => {
+      // معالجة إحصائيات الحالات
+      result.statusStats.forEach((stat) => {
         switch (stat._id) {
           case ORDER_STATUSES.PENDING:
             stats.pending = stat.count;
@@ -604,33 +655,10 @@ class OrderModel {
         }
       });
 
-      const validOrdersCount = totalOrders - stats.pending - stats.cancelled;
+      // حساب متوسط قيمة الطلب
+      const validOrdersCount = stats.total - stats.pending - stats.cancelled;
       stats.averageOrderValue =
         validOrdersCount > 0 ? stats.totalRevenue / validOrdersCount : 0;
-
-      const now = new Date();
-      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-
-      const thisMonthCount = await OrderSchema.countDocuments({
-        createdAt: { $gte: thisMonthStart },
-        status: { $ne: ORDER_STATUSES.PENDING },
-      });
-
-      const lastMonthCount = await OrderSchema.countDocuments({
-        createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd },
-        status: { $ne: ORDER_STATUSES.PENDING },
-      });
-
-      const pendingThisMonth = await OrderSchema.countDocuments({
-        createdAt: { $gte: thisMonthStart },
-        status: ORDER_STATUSES.PENDING,
-      });
-
-      stats.thisMonth = thisMonthCount;
-      stats.lastMonth = lastMonthCount;
-      stats.pendingReview.thisMonth = pendingThisMonth;
 
       return stats;
     } catch (error) {

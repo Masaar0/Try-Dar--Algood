@@ -30,6 +30,10 @@ const CategoryManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
+  const [categoriesCache, setCategoriesCache] = useState<{
+    data: CategoryData[];
+    timestamp: number;
+  } | null>(null);
   const [editingCategory, setEditingCategory] = useState<CategoryData | null>(
     null
   );
@@ -73,12 +77,32 @@ const CategoryManagement: React.FC = () => {
     loadCategories();
   }, []);
 
-  const loadCategories = async () => {
+  const loadCategories = async (forceRefresh = false) => {
     setIsLoading(true);
     setError("");
     try {
+      // التحقق من كاش التصنيفات أولاً
+      const CATEGORIES_CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+      const now = Date.now();
+
+      if (
+        !forceRefresh &&
+        categoriesCache &&
+        now - categoriesCache.timestamp < CATEGORIES_CACHE_DURATION
+      ) {
+        setCategories(categoriesCache.data);
+        setIsLoading(false);
+        return;
+      }
+
       const data = await categoryService.getCategories();
       setCategories(data);
+
+      // حفظ في كاش التصنيفات
+      setCategoriesCache({
+        data: data,
+        timestamp: now,
+      });
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "فشل في تحميل التصنيفات"
@@ -105,6 +129,17 @@ const CategoryManagement: React.FC = () => {
       setCategories((prev) =>
         [...prev, newCategory].sort((a, b) => a.order - b.order)
       );
+
+      // تحديث الكاش مع التصنيف الجديد
+      if (categoriesCache) {
+        setCategoriesCache({
+          data: [...categoriesCache.data, newCategory].sort(
+            (a, b) => a.order - b.order
+          ),
+          timestamp: Date.now(),
+        });
+      }
+
       setSaveMessage("تم إنشاء التصنيف بنجاح");
       setNewCategoryData({
         name: "",
@@ -142,6 +177,17 @@ const CategoryManagement: React.FC = () => {
           cat.id === editingCategory.id ? updatedCategory : cat
         )
       );
+
+      // تحديث الكاش مع التصنيف المحدث
+      if (categoriesCache) {
+        setCategoriesCache({
+          data: categoriesCache.data.map((cat) =>
+            cat.id === editingCategory.id ? updatedCategory : cat
+          ),
+          timestamp: Date.now(),
+        });
+      }
+
       setSaveMessage("تم تحديث التصنيف بنجاح");
       setEditingCategory(null);
       editCategoryModal.closeModal();
@@ -162,6 +208,17 @@ const CategoryManagement: React.FC = () => {
       setCategories((prev) =>
         prev.filter((cat) => cat.id !== categoryToDelete.id)
       );
+
+      // تحديث الكاش مع إزالة التصنيف
+      if (categoriesCache) {
+        setCategoriesCache({
+          data: categoriesCache.data.filter(
+            (cat) => cat.id !== categoryToDelete.id
+          ),
+          timestamp: Date.now(),
+        });
+      }
+
       setSaveMessage("تم حذف التصنيف بنجاح");
       setCategoryToDelete(null);
       deleteCategoryModal.closeModal();
@@ -178,6 +235,13 @@ const CategoryManagement: React.FC = () => {
 
       const resetData = await categoryService.resetCategories(token);
       setCategories(resetData);
+
+      // تحديث الكاش مع البيانات الجديدة
+      setCategoriesCache({
+        data: resetData,
+        timestamp: Date.now(),
+      });
+
       setSaveMessage("تم إعادة تعيين التصنيفات بنجاح");
       resetCategoriesModal.closeModal();
       setTimeout(() => setSaveMessage(""), 3000);
@@ -214,6 +278,13 @@ const CategoryManagement: React.FC = () => {
           >
             <Plus className="w-4 h-4" />
             إضافة تصنيف
+          </button>
+          <button
+            onClick={() => loadCategories(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-sm"
+          >
+            <RotateCcw className="w-4 h-4" />
+            تحديث
           </button>
           <button
             onClick={resetCategoriesModal.openModal}
@@ -268,6 +339,14 @@ const CategoryManagement: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900">
               التصنيفات المتاحة ({categories.length})
             </h3>
+            {categoriesCache && (
+              <p className="text-xs text-gray-500 mt-1">
+                البيانات محفوظة في الكاش - آخر تحديث:{" "}
+                {new Date(categoriesCache.timestamp).toLocaleTimeString(
+                  "ar-SA"
+                )}
+              </p>
+            )}
           </div>
 
           <div className="divide-y divide-gray-200">

@@ -17,12 +17,13 @@ export const initializeDefaultImages = async () => {
   }
 };
 
-// الحصول على جميع الشعارات الجاهزة (عام - بدون مصادقة)
+// الحصول على جميع الشعارات الجاهزة (عام - بدون مصادقة) - محسن مع الكاش
 export const getPredefinedImages = async (req, res) => {
   try {
     const images = await PredefinedImageSchema.find()
       .sort({ createdAt: -1 })
-      .lean();
+      .lean()
+      .exec();
 
     const cleanImages = images.map((img) => ({
       ...img,
@@ -327,13 +328,14 @@ export const getPredefinedImagesByCategory = async (req, res) => {
     });
   }
 };
-// الحصول على الشعارات مع معلومات التصنيفات (عام - بدون مصادقة)
+// الحصول على الشعارات مع معلومات التصنيفات (عام - بدون مصادقة) - محسن مع الكاش
 export const getPredefinedImagesWithCategories = async (req, res) => {
   try {
-    const images = await PredefinedImageSchema.find()
-      .sort({ createdAt: -1 })
-      .lean();
-    const categories = await CategoryModel.getCategories();
+    // تنفيذ الاستعلامات بشكل متوازي للحصول على أفضل أداء
+    const [images, categories] = await Promise.all([
+      PredefinedImageSchema.find().sort({ createdAt: -1 }).lean().exec(),
+      CategoryModel.getCategories(),
+    ]);
 
     const imagesWithCategories = images.map((image) => {
       const category = categories.find((cat) => cat.id === image.categoryId);

@@ -227,14 +227,21 @@ const orderSchema = new mongoose.Schema({
   notes: [noteSchema],
 });
 
-// إنشاء فهارس مركبة للبحث السريع
+// إنشاء فهارس مركبة للبحث السريع والأداء المحسن
 orderSchema.index({ orderNumber: 1, trackingCode: 1 });
 orderSchema.index({
   "customerInfo.name": "text",
   "customerInfo.phone": "text",
+  orderNumber: "text",
+  trackingCode: "text",
 });
-orderSchema.index({ status: 1, createdAt: -1 });
-orderSchema.index({ createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 }); // للبحث حسب الحالة والتاريخ
+orderSchema.index({ createdAt: -1 }); // للترتيب حسب التاريخ
+orderSchema.index({ status: 1 }); // للبحث حسب الحالة فقط
+orderSchema.index({ "customerInfo.name": 1 }); // للبحث حسب اسم العميل
+orderSchema.index({ "customerInfo.phone": 1 }); // للبحث حسب رقم الهاتف
+orderSchema.index({ orderNumber: 1 }); // للبحث حسب رقم الطلب
+orderSchema.index({ trackingCode: 1 }); // للبحث حسب رمز التتبع
 
 // Middleware لتحديث updatedAt تلقائياً
 orderSchema.pre("save", function (next) {
