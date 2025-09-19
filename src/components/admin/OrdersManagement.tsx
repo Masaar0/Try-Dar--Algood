@@ -41,7 +41,7 @@ import { useOrdersCache } from "../../hooks/useOrdersCache";
 
 const OrdersManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { getFromCache, setCache } = useOrdersCache();
+  const { getFromCache, setCache, invalidateCache } = useOrdersCache();
 
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [pendingOrders, setPendingOrders] = useState<OrderData[]>([]);
@@ -469,6 +469,14 @@ const OrdersManagement: React.FC = () => {
         setTotalPages(result.pagination.totalPages);
         setTotalOrders(result.pagination.totalOrders);
 
+        // التحقق من صحة الصفحة الحالية بعد تحميل البيانات
+        if (
+          result.pagination.totalPages > 0 &&
+          currentPage > result.pagination.totalPages
+        ) {
+          setCurrentPage(result.pagination.totalPages);
+        }
+
         // حفظ في الكاش
         setCache(
           currentPage,
@@ -539,6 +547,14 @@ const OrdersManagement: React.FC = () => {
         setPendingTotalPages(result.pagination.totalPages);
         setTotalPendingOrders(result.pagination.totalOrders);
 
+        // التحقق من صحة الصفحة الحالية بعد تحميل البيانات
+        if (
+          result.pagination.totalPages > 0 &&
+          pendingCurrentPage > result.pagination.totalPages
+        ) {
+          setPendingCurrentPage(result.pagination.totalPages);
+        }
+
         // حفظ في الكاش
         setCache(
           pendingCurrentPage,
@@ -597,6 +613,33 @@ const OrdersManagement: React.FC = () => {
     }
   };
 
+  // دالة للتحقق من صحة الصفحة الحالية وإعادة تعيينها إذا لزم الأمر
+  const validateCurrentPage = useCallback(() => {
+    if (activeTab === "pending") {
+      // إذا كانت الصفحة الحالية أكبر من العدد الإجمالي للصفحات، انتقل للصفحة الأخيرة
+      if (pendingCurrentPage > pendingTotalPages && pendingTotalPages > 0) {
+        setPendingCurrentPage(pendingTotalPages);
+      }
+      // إذا كانت الصفحة الحالية أقل من 1، انتقل للصفحة الأولى
+      else if (pendingCurrentPage < 1) {
+        setPendingCurrentPage(1);
+      }
+    } else if (activeTab === "confirmed") {
+      // نفس المنطق للطلبات المؤكدة
+      if (currentPage > totalPages && totalPages > 0) {
+        setCurrentPage(totalPages);
+      } else if (currentPage < 1) {
+        setCurrentPage(1);
+      }
+    }
+  }, [
+    activeTab,
+    pendingCurrentPage,
+    pendingTotalPages,
+    currentPage,
+    totalPages,
+  ]);
+
   // دالة محسنة لتحديث كل البيانات - لا تمسح الكاش بالكامل
   const refreshAllData = useCallback(async () => {
     // لا تمسح الكاش بالكامل، فقط حدث البيانات المطلوبة
@@ -605,7 +648,12 @@ const OrdersManagement: React.FC = () => {
       loadPendingOrders(true), // تحديث الطلبات قيد المراجعة مع إجبار التحديث
       loadStats(true), // تحديث الإحصائيات مع إجبار التحديث
     ]);
-  }, [loadOrders, loadPendingOrders, loadStats]);
+
+    // التحقق من صحة الصفحة الحالية بعد التحديث
+    setTimeout(() => {
+      validateCurrentPage();
+    }, 100);
+  }, [loadOrders, loadPendingOrders, loadStats, validateCurrentPage]);
 
   // Initial load - تحميل تدريجي محسن للأداء
   useEffect(() => {
@@ -640,6 +688,11 @@ const OrdersManagement: React.FC = () => {
     }
   }, [currentPage, statusFilter, loadOrders, searchTerm]);
 
+  // التحقق من صحة الصفحة الحالية عند تغيير البيانات
+  useEffect(() => {
+    validateCurrentPage();
+  }, [pendingTotalPages, totalPages, validateCurrentPage]);
+
   useEffect(() => {
     if (activeTab === "pending") {
       loadPendingOrders(false, searchTerm);
@@ -662,6 +715,11 @@ const OrdersManagement: React.FC = () => {
         window.dispatchEvent(new Event("resize"));
       }, 50);
     }
+
+    // التحقق من صحة الصفحة الحالية عند تغيير التبويب
+    setTimeout(() => {
+      validateCurrentPage();
+    }, 100);
   };
 
   // البحث اليدوي عند الضغط على Enter أو تغيير الفلترة - محسن مع debounce
@@ -806,8 +864,20 @@ const OrdersManagement: React.FC = () => {
         setTotalOrders((prev) => prev - 1);
       }
 
+      // مسح الكاش المتعلق بالطلبات
+      invalidateCache("pending");
+      invalidateCache("confirmed");
+
       // تحديث كل البيانات
       await refreshAllData();
+
+      // التحقق من صحة الصفحة الحالية بعد الحذف
+      if (activeTab === "pending" && orderToDelete.status === "pending") {
+        // إذا تم حذف طلب قيد المراجعة، تحقق من صحة الصفحة
+        if (pendingOrders.length === 1 && pendingCurrentPage > 1) {
+          setPendingCurrentPage(pendingCurrentPage - 1);
+        }
+      }
 
       deleteOrderModal.closeModal();
       setOrderToDelete(null);
@@ -839,8 +909,27 @@ const OrdersManagement: React.FC = () => {
       setTotalPendingOrders((prev) => prev - 1); // تقليل عدد الطلبات قيد المراجعة
       setTotalOrders((prev) => prev + 1); // زيادة عدد الطلبات المؤكدة
 
+      // مسح الكاش المتعلق بالطلبات قيد المراجعة
+      invalidateCache("pending");
+
       // تحديث كل البيانات
       await refreshAllData();
+
+      // التحقق من أن الصفحة الحالية لا تزال صالحة بعد التأكيد
+      if (activeTab === "pending") {
+        // إذا كان هناك طلب واحد فقط في الصفحة الحالية، انتقل للصفحة السابقة
+        if (pendingOrders.length === 1 && pendingCurrentPage > 1) {
+          const newPage = pendingCurrentPage - 1;
+          setPendingCurrentPage(newPage);
+        }
+        // إذا كانت الصفحة الحالية أكبر من العدد الإجمالي للصفحات بعد التأكيد
+        else if (
+          pendingCurrentPage > pendingTotalPages &&
+          pendingTotalPages > 0
+        ) {
+          setPendingCurrentPage(pendingTotalPages);
+        }
+      }
 
       confirmOrderModal.closeModal();
       setOrderToConfirm(null);
@@ -876,8 +965,20 @@ const OrdersManagement: React.FC = () => {
 
       setSelectedOrder(updatedOrder);
 
+      // مسح الكاش المتعلق بالطلبات
+      invalidateCache("pending");
+      invalidateCache("confirmed");
+
       // تحديث كل البيانات
       await refreshAllData();
+
+      // التحقق من صحة الصفحة الحالية بعد تحديث الحالة
+      if (activeTab === "pending" && updatedOrder.status !== "pending") {
+        // إذا تم تغيير حالة الطلب من قيد المراجعة، تحقق من صحة الصفحة
+        if (pendingOrders.length === 1 && pendingCurrentPage > 1) {
+          setPendingCurrentPage(pendingCurrentPage - 1);
+        }
+      }
 
       updateStatusModal.closeModal();
       setNewStatus("");
@@ -942,7 +1043,21 @@ const OrdersManagement: React.FC = () => {
     totalOrdersProp: number;
     onPageChange: (page: number) => void;
   }) => {
-    if (totalPagesProp <= 1) return null;
+    // إظهار أدوات التنقل حتى لو كانت هناك صفحة واحدة فقط، لكن مع إخفاء أزرار التنقل
+    if (totalPagesProp <= 1) {
+      return (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+            <span className="hidden sm:inline">
+              عرض جميع {totalOrdersProp} طلب
+            </span>
+            <span className="sm:hidden">
+              صفحة {currentPageProp} من {totalPagesProp}
+            </span>
+          </div>
+        </div>
+      );
+    }
 
     const getPageNumbers = () => {
       const pages = [];
