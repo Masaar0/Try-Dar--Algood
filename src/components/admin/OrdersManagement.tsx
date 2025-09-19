@@ -1089,14 +1089,6 @@ const OrdersManagement: React.FC = () => {
             )}
             تحديث شامل
           </button>
-
-          {/* مؤشر الكاش - يظهر فقط عند التحميل الفعلي من الخادم */}
-          {(isLoading || isLoadingPending) && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              جاري التحميل من الخادم...
-            </div>
-          )}
         </div>
       </div>
 
