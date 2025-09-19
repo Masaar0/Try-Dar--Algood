@@ -163,19 +163,16 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    index: true,
   },
   orderNumber: {
     type: String,
     required: true,
     unique: true,
-    index: true,
   },
   trackingCode: {
     type: String,
     required: true,
     unique: true,
-    index: true,
   },
   customerInfo: {
     name: { type: String, required: true, trim: true, maxlength: 100 },
@@ -202,13 +199,11 @@ const orderSchema = new mongoose.Schema({
       "cancelled",
       "returned",
     ],
-    index: true,
   },
   statusHistory: [statusHistorySchema],
   createdAt: {
     type: Date,
     default: Date.now,
-    index: true,
   },
   updatedAt: {
     type: Date,
@@ -237,11 +232,8 @@ orderSchema.index({
 });
 orderSchema.index({ status: 1, createdAt: -1 }); // للبحث حسب الحالة والتاريخ
 orderSchema.index({ createdAt: -1 }); // للترتيب حسب التاريخ
-orderSchema.index({ status: 1 }); // للبحث حسب الحالة فقط
 orderSchema.index({ "customerInfo.name": 1 }); // للبحث حسب اسم العميل
 orderSchema.index({ "customerInfo.phone": 1 }); // للبحث حسب رقم الهاتف
-orderSchema.index({ orderNumber: 1 }); // للبحث حسب رقم الطلب
-orderSchema.index({ trackingCode: 1 }); // للبحث حسب رمز التتبع
 
 // Middleware لتحديث updatedAt تلقائياً
 orderSchema.pre("save", function (next) {

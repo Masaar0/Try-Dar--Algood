@@ -227,10 +227,140 @@ class OrderService {
   private baseUrl = "http://localhost:3001/api/orders";
 
   /**
+   * التحقق من صحة بيانات الطلب
+   */
+  private validateOrderData(orderData: CreateOrderRequest): string[] {
+    const errors: string[] = [];
+
+    // التحقق من معلومات العميل
+    if (!orderData.customerInfo?.name?.trim()) {
+      errors.push("اسم العميل مطلوب");
+    } else if (orderData.customerInfo.name.trim().length < 2) {
+      errors.push("اسم العميل يجب أن يكون حرفين على الأقل");
+    } else if (orderData.customerInfo.name.trim().length > 100) {
+      errors.push("اسم العميل يجب أن يكون أقل من 100 حرف");
+    }
+
+    // التحقق من رقم الهاتف
+    const phoneRegex =
+      /^(05|5|\+9665|9665|\+966[0-9]|966[0-9]|\+66[0-9]|66[0-9])[0-9]{8,10}$/;
+    if (!orderData.customerInfo?.phone?.trim()) {
+      errors.push("رقم الهاتف مطلوب");
+    } else if (
+      !phoneRegex.test(orderData.customerInfo.phone.replace(/[\s()-]/g, ""))
+    ) {
+      errors.push("رقم الهاتف غير صحيح. يجب أن يكون رقم سعودي أو تايلندي صحيح");
+    }
+
+    // التحقق من العناصر
+    if (
+      !orderData.items ||
+      !Array.isArray(orderData.items) ||
+      orderData.items.length === 0
+    ) {
+      errors.push("يجب إضافة عنصر واحد على الأقل");
+    } else {
+      orderData.items.forEach((item, index) => {
+        if (!item.id) {
+          errors.push(`عنصر ${index + 1}: معرف العنصر مطلوب`);
+        }
+        if (!item.jacketConfig) {
+          errors.push(`عنصر ${index + 1}: تكوين الجاكيت مطلوب`);
+        }
+        if (!item.quantity || item.quantity < 1) {
+          errors.push(`عنصر ${index + 1}: الكمية يجب أن تكون 1 على الأقل`);
+        }
+        if (!item.price || item.price < 0) {
+          errors.push(
+            `عنصر ${index + 1}: السعر يجب أن يكون أكبر من أو يساوي صفر`
+          );
+        }
+      });
+    }
+
+    // التحقق من السعر الإجمالي
+    if (!orderData.totalPrice || orderData.totalPrice <= 0) {
+      errors.push("السعر الإجمالي يجب أن يكون أكبر من صفر");
+    }
+
+    // التحقق من تطابق السعر الإجمالي مع مجموع العناصر
+    if (orderData.items && orderData.items.length > 0) {
+      const calculatedTotal = orderData.items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      if (Math.abs(orderData.totalPrice - calculatedTotal) > 0.01) {
+        errors.push("السعر الإجمالي لا يتطابق مع مجموع العناصر");
+      }
+    }
+
+    return errors;
+  }
+
+  /**
+   * معالجة شاملة للأخطاء
+   */
+  private handleOrderError(error: unknown, operation: string): string {
+    console.error(`Order ${operation} error:`, error);
+
+    // التحقق من نوع الخطأ
+    if (error && typeof error === "object") {
+      const errorObj = error as {
+        code?: number;
+        name?: string;
+        message?: string;
+      };
+
+      if (errorObj.code === 11000) {
+        return "رقم الطلب أو رمز التتبع موجود بالفعل";
+      }
+
+      if (errorObj.name === "ValidationError") {
+        return "بيانات الطلب غير صحيحة";
+      }
+
+      if (errorObj.name === "CastError") {
+        return "نوع البيانات غير صحيح";
+      }
+
+      if (errorObj.message?.includes("رمز المصادقة")) {
+        return "انتهت جلسة العمل. يرجى تسجيل الدخول مرة أخرى";
+      }
+
+      if (errorObj.message?.includes("غير مصرح")) {
+        return "ليس لديك صلاحية للقيام بهذه العملية";
+      }
+
+      return errorObj.message || "حدث خطأ غير متوقع";
+    }
+
+    // إذا كان الخطأ من نوع Error
+    if (error instanceof Error) {
+      if (error.message?.includes("رمز المصادقة")) {
+        return "انتهت جلسة العمل. يرجى تسجيل الدخول مرة أخرى";
+      }
+
+      if (error.message?.includes("غير مصرح")) {
+        return "ليس لديك صلاحية للقيام بهذه العملية";
+      }
+
+      return error.message || "حدث خطأ غير متوقع";
+    }
+
+    return "حدث خطأ غير متوقع";
+  }
+
+  /**
    * إنشاء طلب جديد
    */
   async createOrder(orderData: CreateOrderRequest): Promise<OrderData> {
     try {
+      // التحقق من صحة البيانات قبل الإرسال
+      const validationErrors = this.validateOrderData(orderData);
+      if (validationErrors.length > 0) {
+        throw new Error(`أخطاء في البيانات: ${validationErrors.join(", ")}`);
+      }
+
       const response = await fetch(this.baseUrl, {
         method: "POST",
         headers: {
@@ -254,10 +384,8 @@ class OrderService {
 
       return result.data;
     } catch (error) {
-      console.error("Error creating order:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "حدث خطأ أثناء إنشاء الطلب"
-      );
+      const errorMessage = this.handleOrderError(error, "create");
+      throw new Error(errorMessage);
     }
   }
 
@@ -266,6 +394,10 @@ class OrderService {
    */
   async trackOrder(searchValue: string): Promise<PublicOrderInfo> {
     try {
+      if (!searchValue?.trim()) {
+        throw new Error("رمز التتبع أو رقم الطلب مطلوب");
+      }
+
       const response = await fetch(`${this.baseUrl}/track/${searchValue}`);
 
       if (!response.ok) {
@@ -283,10 +415,8 @@ class OrderService {
 
       return result.data;
     } catch (error) {
-      console.error("Error tracking order:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "حدث خطأ أثناء تتبع الطلب"
-      );
+      const errorMessage = this.handleOrderError(error, "track");
+      throw new Error(errorMessage);
     }
   }
 

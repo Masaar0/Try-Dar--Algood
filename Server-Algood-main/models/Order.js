@@ -240,8 +240,35 @@ class OrderModel {
   }
 
   /**
-   * تحديث حالة الطلب
+   * التحقق من صحة انتقال الحالة
    */
+  static isValidStatusTransition(currentStatus, newStatus) {
+    const validTransitions = {
+      [ORDER_STATUSES.PENDING]: [
+        ORDER_STATUSES.CONFIRMED,
+        ORDER_STATUSES.CANCELLED,
+      ],
+      [ORDER_STATUSES.CONFIRMED]: [
+        ORDER_STATUSES.PROCESSING,
+        ORDER_STATUSES.CANCELLED,
+      ],
+      [ORDER_STATUSES.PROCESSING]: [
+        ORDER_STATUSES.SHIPPED,
+        ORDER_STATUSES.CANCELLED,
+      ],
+      [ORDER_STATUSES.SHIPPED]: [
+        ORDER_STATUSES.DELIVERED,
+        ORDER_STATUSES.CANCELLED,
+      ],
+      [ORDER_STATUSES.DELIVERED]: [], // لا يمكن تغيير حالة الطلب بعد التسليم
+      [ORDER_STATUSES.CANCELLED]: [], // لا يمكن تغيير حالة الطلب الملغي
+      [ORDER_STATUSES.RETURNED]: [], // لا يمكن تغيير حالة الطلب المرتجع
+      [ORDER_STATUSES.REFUNDED]: [], // لا يمكن تغيير حالة الطلب المسترد
+      [ORDER_STATUSES.EXCHANGED]: [], // لا يمكن تغيير حالة الطلب المبدل
+    };
+
+    return validTransitions[currentStatus]?.includes(newStatus) || false;
+  }
   async updateOrderStatus(orderId, newStatus, note = "", updatedBy = "admin") {
     try {
       const order = await OrderSchema.findOne({ id: orderId });
@@ -254,26 +281,58 @@ class OrderModel {
         throw new Error("حالة الطلب غير صحيحة");
       }
 
-      order.status = newStatus;
-      order.updatedAt = new Date();
+      // التحقق من صحة انتقال الحالة
+      if (!OrderModel.isValidStatusTransition(order.status, newStatus)) {
+        throw new Error(
+          `لا يمكن تغيير حالة الطلب من ${STATUS_NAMES[order.status]} إلى ${
+            STATUS_NAMES[newStatus]
+          }`
+        );
+      }
 
-      order.statusHistory.push({
-        status: newStatus,
-        timestamp: new Date(),
-        note: note || STATUS_NAMES[newStatus],
-        updatedBy,
-      });
+      // تحديث الطلب مع التحقق من التعديل المتزامن
+      const updatedOrder = await OrderSchema.findOneAndUpdate(
+        {
+          id: orderId,
+          updatedAt: order.updatedAt, // التحقق من أن الطلب لم يتم تعديله
+        },
+        {
+          $set: {
+            status: newStatus,
+            updatedAt: new Date(),
+          },
+          $push: {
+            statusHistory: {
+              status: newStatus,
+              timestamp: new Date(),
+              note: note || STATUS_NAMES[newStatus],
+              updatedBy,
+            },
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
 
+      if (!updatedOrder) {
+        throw new Error(
+          "فشل في تحديث حالة الطلب - قد يكون الطلب تم تعديله بواسطة مستخدم آخر"
+        );
+      }
+
+      // تحديث التواريخ الخاصة بالحالات
       if (newStatus === ORDER_STATUSES.SHIPPED) {
-        order.shippedAt = new Date();
-        order.estimatedDelivery = this.calculateDeliveryDate();
+        updatedOrder.shippedAt = new Date();
+        updatedOrder.estimatedDelivery = this.calculateDeliveryDate();
       }
 
       if (newStatus === ORDER_STATUSES.DELIVERED) {
-        order.deliveredAt = new Date();
+        updatedOrder.deliveredAt = new Date();
       }
 
-      const updatedOrder = await order.save();
+      await updatedOrder.save();
 
       return {
         ...updatedOrder.toObject(),

@@ -62,17 +62,30 @@ class AutoOrderCleanupService {
       const expiredOrders = await this.findExpiredOrders();
 
       if (expiredOrders.length === 0) {
-        return;
+        return {
+          success: true,
+          message: "لا توجد طلبات منتهية الصلاحية",
+          deletedCount: 0,
+          errorCount: 0,
+        };
       }
 
       let successCount = 0;
       let errorCount = 0;
+      const errors = [];
 
       for (const order of expiredOrders) {
         try {
           // التأكد من أن الطلب غير مؤكد فقط
           if (order.status !== ORDER_STATUSES.PENDING) {
             continue;
+          }
+
+          // التحقق من أن الطلب لم يتم تعديله مؤخراً
+          const daysSinceUpdate =
+            (new Date() - order.updatedAt) / (1000 * 60 * 60 * 24);
+          if (daysSinceUpdate < 1) {
+            continue; // تخطي الطلبات التي تم تحديثها خلال آخر 24 ساعة
           }
 
           // حذف شامل للطلب وجميع البيانات المرتبطة
@@ -84,10 +97,29 @@ class AutoOrderCleanupService {
           successCount++;
         } catch (error) {
           errorCount++;
+          errors.push({
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            error: error.message,
+          });
         }
       }
+
+      return {
+        success: true,
+        message: `تم حذف ${successCount} من ${expiredOrders.length} طلب`,
+        deletedCount: successCount,
+        errorCount,
+        errors,
+      };
     } catch (error) {
-      // معالجة صامتة للأخطاء
+      return {
+        success: false,
+        message: `خطأ في الحذف التلقائي: ${error.message}`,
+        deletedCount: 0,
+        errorCount: 1,
+        errors: [error.message],
+      };
     }
   }
 

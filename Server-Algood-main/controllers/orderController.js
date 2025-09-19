@@ -5,6 +5,82 @@ import OrderCleanupService from "../utils/orderCleanupService.js";
 import OrderImageSyncService from "../utils/orderImageSyncService.js";
 import AutoOrderCleanupService from "../utils/autoOrderCleanup.js";
 
+/**
+ * معالجة شاملة للأخطاء في الطلبات
+ */
+const handleOrderError = (error, operation, orderId = null) => {
+  console.error(
+    `Order ${operation} error${orderId ? ` for order ${orderId}` : ""}:`,
+    error
+  );
+
+  // أخطاء قاعدة البيانات
+  if (error.code === 11000) {
+    const field = error.keyPattern ? Object.keys(error.keyPattern)[0] : "field";
+    return {
+      message: `البيانات مكررة: ${field}`,
+      error: "DUPLICATE_DATA",
+      statusCode: 409,
+    };
+  }
+
+  // أخطاء التحقق من صحة البيانات
+  if (error.name === "ValidationError") {
+    const validationErrors = Object.values(error.errors).map(
+      (err) => err.message
+    );
+    return {
+      message: `أخطاء في البيانات: ${validationErrors.join(", ")}`,
+      error: "VALIDATION_ERROR",
+      statusCode: 400,
+      details: validationErrors,
+    };
+  }
+
+  // أخطاء التحويل
+  if (error.name === "CastError") {
+    return {
+      message: `نوع البيانات غير صحيح: ${error.path}`,
+      error: "CAST_ERROR",
+      statusCode: 400,
+    };
+  }
+
+  // أخطاء عدم وجود الطلب
+  if (error.message?.includes("الطلب غير موجود")) {
+    return {
+      message: "الطلب غير موجود",
+      error: "ORDER_NOT_FOUND",
+      statusCode: 404,
+    };
+  }
+
+  // أخطاء الصلاحيات
+  if (error.message?.includes("غير مصرح")) {
+    return {
+      message: "ليس لديك صلاحية للقيام بهذه العملية",
+      error: "INSUFFICIENT_PERMISSIONS",
+      statusCode: 403,
+    };
+  }
+
+  // أخطاء المصادقة
+  if (error.message?.includes("رمز المصادقة")) {
+    return {
+      message: "انتهت جلسة العمل. يرجى تسجيل الدخول مرة أخرى",
+      error: "AUTHENTICATION_FAILED",
+      statusCode: 401,
+    };
+  }
+
+  // أخطاء عامة
+  return {
+    message: error.message || "حدث خطأ غير متوقع",
+    error: "INTERNAL_ERROR",
+    statusCode: 500,
+  };
+};
+
 // إنشاء طلب جديد (عام - بدون مصادقة)
 export const createOrder = async (req, res) => {
   try {
@@ -67,10 +143,12 @@ export const createOrder = async (req, res) => {
       data: newOrder,
     });
   } catch (error) {
-    res.status(500).json({
+    const errorInfo = handleOrderError(error, "create");
+    res.status(errorInfo.statusCode).json({
       success: false,
-      message: error.message || "حدث خطأ أثناء إنشاء الطلب",
-      error: "CREATE_ORDER_FAILED",
+      message: errorInfo.message,
+      error: errorInfo.error,
+      ...(errorInfo.details && { details: errorInfo.details }),
     });
   }
 };
@@ -444,10 +522,16 @@ export const updateOrderStatus = async (req, res) => {
       data: orderWithStatusNames,
     });
   } catch (error) {
-    res.status(500).json({
+    const errorInfo = handleOrderError(
+      error,
+      "updateStatus",
+      req.params.orderId
+    );
+    res.status(errorInfo.statusCode).json({
       success: false,
-      message: error.message || "حدث خطأ أثناء تحديث حالة الطلب",
-      error: "UPDATE_ORDER_STATUS_FAILED",
+      message: errorInfo.message,
+      error: errorInfo.error,
+      ...(errorInfo.details && { details: errorInfo.details }),
     });
   }
 };

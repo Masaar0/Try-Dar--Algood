@@ -20,20 +20,31 @@ import {
 } from "../controllers/orderController.js";
 import { authenticateAdmin } from "../middleware/auth.js";
 import { generalRateLimit } from "../middleware/security.js";
+import {
+  validateOrderData,
+  validateStatusUpdate,
+  validateOrderUpdate,
+  validateOrderSearch,
+} from "../middleware/orderValidation.js";
 
 const router = express.Router();
 
 // المسارات العامة (بدون مصادقة)
-router.post("/", generalRateLimit, createOrder);
-router.get("/track/:searchValue", trackOrderByCode);
+router.post("/", generalRateLimit, validateOrderData, createOrder);
+router.get("/track/:searchValue", validateOrderSearch, trackOrderByCode);
 router.get("/statuses", getOrderStatuses);
 
 // المسارات الإدارية (تتطلب مصادقة)
 router.get("/", authenticateAdmin, getAllOrders);
 router.get("/stats", authenticateAdmin, getOrderStats);
 router.get("/:orderId", authenticateAdmin, getOrderById);
-router.put("/:orderId/status", authenticateAdmin, updateOrderStatus);
-router.put("/:orderId", authenticateAdmin, updateOrder);
+router.put(
+  "/:orderId/status",
+  authenticateAdmin,
+  validateStatusUpdate,
+  updateOrderStatus
+);
+router.put("/:orderId", authenticateAdmin, validateOrderUpdate, updateOrder);
 router.post("/:orderId/notes", authenticateAdmin, addOrderNote);
 router.delete("/:orderId", authenticateAdmin, deleteOrder); // حذف شامل مع جميع البيانات المرتبطة
 router.get("/:orderId/images", authenticateAdmin, getOrderImages);
