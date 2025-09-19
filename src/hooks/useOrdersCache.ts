@@ -21,8 +21,11 @@ interface OrdersCache {
 const CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
 const MAX_CACHE_SIZE = 50; // أقصى عدد من الإدخالات في الكاش
 
+// إنشاء كاش عام مشترك بين جميع المكونات
+let globalCache: OrdersCache = {};
+
 export const useOrdersCache = () => {
-  const cacheRef = useRef<OrdersCache>({});
+  const cacheRef = useRef<OrdersCache>(globalCache);
   const [isLoading, setIsLoading] = useState(false);
 
   // إنشاء مفتاح فريد للكاش بناءً على المعاملات
@@ -47,6 +50,7 @@ export const useOrdersCache = () => {
     Object.keys(cache).forEach((key) => {
       if (now - cache[key].timestamp > CACHE_DURATION) {
         delete cache[key];
+        delete globalCache[key]; // تنظيف الكاش العام أيضاً
       }
     });
 
@@ -57,7 +61,10 @@ export const useOrdersCache = () => {
         (a, b) => cache[a].timestamp - cache[b].timestamp
       );
       const keysToDelete = sortedKeys.slice(0, keys.length - MAX_CACHE_SIZE);
-      keysToDelete.forEach((key) => delete cache[key]);
+      keysToDelete.forEach((key) => {
+        delete cache[key];
+        delete globalCache[key]; // تنظيف الكاش العام أيضاً
+      });
     }
   }, []);
 
@@ -103,12 +110,15 @@ export const useOrdersCache = () => {
     ) => {
       const key = createCacheKey(page, limit, status, search, includePending);
 
-      cacheRef.current[key] = {
+      const cacheEntry = {
         data,
         pagination,
         timestamp: Date.now(),
         searchParams: `${page}-${limit}-${status}-${search}-${includePending}`,
       };
+
+      cacheRef.current[key] = cacheEntry;
+      globalCache[key] = cacheEntry; // حفظ في الكاش العام أيضاً
     },
     [createCacheKey]
   );
@@ -116,6 +126,7 @@ export const useOrdersCache = () => {
   // مسح الكاش بالكامل
   const clearCache = useCallback(() => {
     cacheRef.current = {};
+    globalCache = {}; // مسح الكاش العام أيضاً
   }, []);
 
   // مسح إدخالات محددة من الكاش
@@ -129,6 +140,7 @@ export const useOrdersCache = () => {
       Object.keys(cacheRef.current).forEach((key) => {
         if (key.includes(pattern)) {
           delete cacheRef.current[key];
+          delete globalCache[key]; // مسح من الكاش العام أيضاً
         }
       });
     },

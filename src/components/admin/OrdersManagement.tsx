@@ -41,7 +41,7 @@ import { useOrdersCache } from "../../hooks/useOrdersCache";
 
 const OrdersManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { getFromCache, setCache, isLoading: cacheLoading } = useOrdersCache();
+  const { getFromCache, setCache } = useOrdersCache();
 
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [pendingOrders, setPendingOrders] = useState<OrderData[]>([]);
@@ -433,14 +433,13 @@ const OrdersManagement: React.FC = () => {
       customSearchTerm = searchTerm,
       customStatusFilter = statusFilter
     ) => {
-      setIsLoading(true);
       setError("");
 
       try {
         const token = authService.getToken();
         if (!token) throw new Error("رمز المصادقة غير موجود");
 
-        // التحقق من الكاش أولاً
+        // التحقق من الكاش أولاً قبل تعيين حالة التحميل
         if (!forceRefresh) {
           const cached = getFromCache(
             currentPage,
@@ -454,10 +453,13 @@ const OrdersManagement: React.FC = () => {
             setOrders(cached.data);
             setTotalPages(cached.pagination.totalPages);
             setTotalOrders(cached.pagination.totalOrders);
-            setIsLoading(false);
+            // لا نحتاج لتعيين isLoading = false هنا لأننا لم نضعها true
             return;
           }
         }
+
+        // فقط إذا لم نجد البيانات في الكاش، نبدأ التحميل
+        setIsLoading(true);
 
         const result = await orderService.getAllOrders(token, {
           page: currentPage,
@@ -501,14 +503,13 @@ const OrdersManagement: React.FC = () => {
 
   const loadPendingOrders = useCallback(
     async (forceRefresh = false, customSearchTerm = searchTerm) => {
-      setIsLoadingPending(true);
       setError("");
 
       try {
         const token = authService.getToken();
         if (!token) throw new Error("رمز المصادقة غير موجود");
 
-        // التحقق من الكاش أولاً
+        // التحقق من الكاش أولاً قبل تعيين حالة التحميل
         if (!forceRefresh) {
           const cached = getFromCache(
             pendingCurrentPage,
@@ -522,10 +523,13 @@ const OrdersManagement: React.FC = () => {
             setPendingOrders(cached.data);
             setPendingTotalPages(cached.pagination.totalPages);
             setTotalPendingOrders(cached.pagination.totalOrders);
-            setIsLoadingPending(false);
+            // لا نحتاج لتعيين isLoadingPending = false هنا لأننا لم نضعها true
             return;
           }
         }
+
+        // فقط إذا لم نجد البيانات في الكاش، نبدأ التحميل
+        setIsLoadingPending(true);
 
         const result = await orderService.getAllOrders(token, {
           page: pendingCurrentPage,
@@ -605,12 +609,13 @@ const OrdersManagement: React.FC = () => {
       loadPendingOrders(true), // تحديث الطلبات قيد المراجعة مع إجبار التحديث
       loadStats(true), // تحديث الإحصائيات مع إجبار التحديث
     ]);
-  }, [loadOrders, loadPendingOrders]);
+  }, [loadOrders, loadPendingOrders, loadStats]);
 
   // Initial load - تحميل تدريجي محسن للأداء
   useEffect(() => {
     const initializeData = async () => {
       // تحميل الطلبات أولاً (الأولوية العالية)
+      // هذه الدوال ستحقق من الكاش أولاً قبل التحميل
       await Promise.all([
         loadOrders(), // Load confirmed orders
         loadPendingOrders(), // Load pending orders
@@ -621,7 +626,7 @@ const OrdersManagement: React.FC = () => {
     };
 
     initializeData();
-  }, []); // Load once on component mount
+  }, []); // Load once on component mount - لا نضع dependencies هنا
 
   // تنظيف timeout عند إلغاء تحميل المكون
   useEffect(() => {
@@ -637,13 +642,13 @@ const OrdersManagement: React.FC = () => {
     if (activeTab === "confirmed") {
       loadOrders();
     }
-  }, [currentPage, statusFilter]);
+  }, [currentPage, statusFilter, loadOrders]);
 
   useEffect(() => {
     if (activeTab === "pending") {
       loadPendingOrders();
     }
-  }, [pendingCurrentPage]);
+  }, [pendingCurrentPage, loadPendingOrders]);
 
   const handleTabSwitch = (tab: "confirmed" | "pending") => {
     setActiveTab(tab);
@@ -1082,11 +1087,11 @@ const OrdersManagement: React.FC = () => {
             تحديث شامل
           </button>
 
-          {/* مؤشر الكاش */}
-          {cacheLoading && (
+          {/* مؤشر الكاش - يظهر فقط عند التحميل الفعلي من الخادم */}
+          {(isLoading || isLoadingPending) && (
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              جاري التحميل من الكاش...
+              جاري التحميل من الخادم...
             </div>
           )}
         </div>
