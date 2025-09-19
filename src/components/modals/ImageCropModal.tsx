@@ -260,31 +260,22 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
       const scaleY = image.naturalHeight / image.height;
 
       if (cropMode === "full") {
-        // للصورة الكاملة، نستخدم الأبعاد الطبيعية للصورة
-        canvas.width = image.naturalWidth;
-        canvas.height = image.naturalHeight;
+        // للصورة الكاملة - رفع مباشر بدون أي معالجة لضمان الجودة 100%
+        // إنشاء FileReader لقراءة الملف الأصلي مباشرة
+        const reader = new FileReader();
 
-        const centerX = image.naturalWidth / 2;
-        const centerY = image.naturalHeight / 2;
+        reader.onload = () => {
+          const originalDataUrl = reader.result as string;
+          onCropComplete(originalDataUrl, imageFile);
+          onClose();
+        };
 
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate((rotate * Math.PI) / 180);
-        ctx.translate(-centerX, -centerY);
+        reader.onerror = () => {
+          throw new Error("Failed to read original file");
+        };
 
-        ctx.drawImage(
-          image,
-          0,
-          0,
-          image.naturalWidth,
-          image.naturalHeight,
-          0,
-          0,
-          image.naturalWidth,
-          image.naturalHeight
-        );
-
-        ctx.restore();
+        reader.readAsDataURL(imageFile);
+        return; // إنهاء الدالة هنا للصورة الكاملة
       } else {
         // للاقتطاع العادي
         canvas.width = completedCrop!.width * scaleX;
@@ -436,7 +427,7 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
                     ? "bg-[#563660] text-white shadow-sm"
                     : "text-gray-600 md:hover:bg-gray-100"
                 }`}
-                title="الصورة الكاملة"
+                title="رفع مباشر - الصورة الكاملة بدون معالجة"
               >
                 <ImageIcon className="w-3 h-3 md:w-4 md:h-4" />
               </button>
@@ -536,8 +527,6 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
         <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0">
           <div className="flex gap-3">
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               onClick={handleApplyCrop}
               disabled={(!completedCrop && cropMode !== "full") || isProcessing}
               className={`flex-1 flex items-center justify-center gap-2 py-3 font-medium rounded-xl transition-all duration-200 text-base ${
@@ -549,12 +538,14 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
               {isProcessing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  جاري المعالجة...
+                  {cropMode === "full"
+                    ? "جاري الرفع المباشر..."
+                    : "جاري المعالجة..."}
                 </>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  تطبيق
+                  {cropMode === "full" ? "رفع مباشر" : "تطبيق الاقتصاص"}
                 </>
               )}
             </motion.button>
