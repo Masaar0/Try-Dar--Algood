@@ -9,7 +9,7 @@ export interface ModalProps {
   shouldRender: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  title?: string;
+  title?: string | React.ReactNode;
   showCloseButton?: boolean;
   className?: string;
   contentClassName?: string;
@@ -17,6 +17,7 @@ export interface ModalProps {
   options?: ModalOptions;
   size?: "sm" | "md" | "lg" | "xl" | "full";
   position?: "center" | "top" | "bottom";
+  compactHeader?: boolean;
 }
 
 const sizeClasses = {
@@ -46,6 +47,7 @@ const Modal: React.FC<ModalProps> = ({
   options = {},
   size = "md",
   position = "center",
+  compactHeader = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const {
@@ -117,11 +119,17 @@ const Modal: React.FC<ModalProps> = ({
           >
             {/* Header - إخفاء للنوافذ بحجم كامل */}
             {(title || showCloseButton) && size !== "full" && (
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div
+                className={`flex items-center justify-between border-b border-gray-200 ${
+                  compactHeader ? "p-3" : "p-6"
+                }`}
+              >
                 {title && (
                   <h2
                     id="modal-title"
-                    className="text-xl font-medium text-gray-900"
+                    className={`font-medium text-gray-900 ${
+                      compactHeader ? "text-sm" : "text-xl"
+                    }`}
                   >
                     {title}
                   </h2>
@@ -129,10 +137,16 @@ const Modal: React.FC<ModalProps> = ({
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                    className={`hover:bg-gray-100 rounded-lg transition-colors duration-200 ${
+                      compactHeader ? "p-1" : "p-2"
+                    }`}
                     aria-label="إغلاق النافذة"
                   >
-                    <X className="w-5 h-5 text-gray-500" />
+                    <X
+                      className={`text-gray-500 ${
+                        compactHeader ? "w-4 h-4" : "w-5 h-5"
+                      }`}
+                    />
                   </button>
                 )}
               </div>
@@ -144,7 +158,9 @@ const Modal: React.FC<ModalProps> = ({
                 size === "full"
                   ? "w-full h-full"
                   : title || showCloseButton
-                  ? "p-6"
+                  ? compactHeader
+                    ? "p-4"
+                    : "p-6"
                   : "p-0"
               }
             >

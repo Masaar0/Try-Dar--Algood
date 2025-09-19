@@ -287,14 +287,14 @@ class OrderModel {
         throw new Error("حالة الطلب غير صحيحة");
       }
 
-      // التحقق من صحة انتقال الحالة
-      if (!OrderModel.isValidStatusTransition(order.status, newStatus)) {
-        throw new Error(
-          `لا يمكن تغيير حالة الطلب من ${STATUS_NAMES[order.status]} إلى ${
-            STATUS_NAMES[newStatus]
-          }`
-        );
-      }
+      // تم إزالة قيود انتقال الحالات - يمكن تغيير الحالة إلى أي حالة في أي وقت
+      // if (!OrderModel.isValidStatusTransition(order.status, newStatus)) {
+      //   throw new Error(
+      //     `لا يمكن تغيير حالة الطلب من ${STATUS_NAMES[order.status]} إلى ${
+      //       STATUS_NAMES[newStatus]
+      //     }`
+      //   );
+      // }
 
       // تحديث الطلب مع التحقق من التعديل المتزامن
       const updatedOrder = await OrderSchema.findOneAndUpdate(

@@ -342,8 +342,7 @@ const OrdersManagement: React.FC = () => {
       }
 
       return true;
-    } catch (error) {
-      console.error("فشل في نسخ النص:", error);
+    } catch {
       return false;
     }
   };
@@ -401,14 +400,11 @@ const OrdersManagement: React.FC = () => {
           // إذا فشلت النسخ التلقائية، اعرض المودال
           linkModal.openModal();
         }
-      } catch (copyError) {
-        console.warn("Failed to copy to clipboard:", copyError);
+      } catch {
         // اعرض المودال حتى لو فشلت النسخ
         linkModal.openModal();
       }
     } catch (error) {
-      console.error("Error creating temporary link:", error);
-
       // تحسين رسائل الخطأ
       let errorMessage = "فشل في إنشاء الرابط المؤقت";
       if (error instanceof Error) {
@@ -594,8 +590,8 @@ const OrdersManagement: React.FC = () => {
         data: statsData,
         timestamp: now,
       });
-    } catch (error) {
-      console.error("Error loading stats:", error);
+    } catch {
+      // خطأ في تحميل الإحصائيات
     } finally {
       setIsLoadingStats(false);
     }
@@ -1586,7 +1582,8 @@ const OrdersManagement: React.FC = () => {
                           <button
                             onClick={() => {
                               setSelectedOrder(order);
-                              setNewStatus(order.status);
+                              setNewStatus("");
+                              setStatusNote("");
                               updateStatusModal.openModal();
                             }}
                             className="text-green-600 hover:text-green-800 transition-colors"
@@ -1908,7 +1905,8 @@ const OrdersManagement: React.FC = () => {
             <div className="grid grid-cols-4 gap-2 pt-2">
               <button
                 onClick={() => {
-                  setNewStatus(selectedOrder.status);
+                  setNewStatus("");
+                  setStatusNote("");
                   orderDetailsModal.closeModal();
                   updateStatusModal.openModal();
                 }}
@@ -1969,86 +1967,185 @@ const OrdersManagement: React.FC = () => {
         <Modal
           isOpen={updateStatusModal.isOpen}
           shouldRender={updateStatusModal.shouldRender}
-          onClose={updateStatusModal.closeModal}
-          title={`تحديث حالة الطلب ${selectedOrder.orderNumber}`}
-          size="md"
+          onClose={() => {
+            updateStatusModal.closeModal();
+            setNewStatus("");
+            setStatusNote("");
+          }}
+          title={
+            <span>
+              <span className="font-bold">تحديث حالة الطلب</span>{" "}
+              <span className="text-[#563660] font-semibold">
+                {selectedOrder.orderNumber}
+              </span>
+            </span>
+          }
+          size="sm"
+          compactHeader={true}
           options={updateStatusModal.options}
         >
-          <div className="space-y-4">
+          <div className="space-y-3 max-h-[75vh] overflow-y-auto px-1">
+            {/* عرض الحالة الحالية - مضغوط */}
+            <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div>
+                  <span className="text-xs text-gray-600">الحالة الحالية:</span>
+                  <span className="text-sm font-semibold text-gray-900 mr-2">
+                    {
+                      orderStatuses.find(
+                        (s) => s.value === selectedOrder.status
+                      )?.name
+                    }
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ملاحظة مهمة للطلبات قيد المراجعة - مضغوطة */}
             {selectedOrder.status === "pending" && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 sm:p-3">
                 <div className="flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h4 className="text-amber-800 font-medium mb-1">
-                      ملاحظة مهمة
-                    </h4>
-                    <p className="text-amber-700 text-sm">
-                      هذا الطلب قيد المراجعة ولا يُحتسب ضمن الإيرادات أو
-                      الإحصائيات. عند تأكيده، سيتم نقله تلقائياً إلى الطلبات
-                      المؤكدة.
+                    <p className="text-amber-700 text-xs leading-relaxed">
+                      طلب قيد المراجعة - سيتم نقله للطلبات المؤكدة عند التأكيد
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* اختيار الحالة الجديدة - مضغوط ومتجاوب */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                الحالة الجديدة
-              </label>
-              <select
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all"
-              >
-                {orderStatuses.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.name}
-                  </option>
-                ))}
-              </select>
-              {selectedOrder.status === "pending" &&
-                newStatus === "confirmed" && (
-                  <p className="text-green-600 text-sm mt-2 flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4" />
-                    سيتم نقل الطلب إلى الطلبات المؤكدة وإدراجه في الحسابات
-                  </p>
-                )}
+              <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                اختر الحالة الجديدة
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                {orderStatuses.map((status) => {
+                  const isCurrentStatus = status.value === selectedOrder.status;
+                  const isSelected = newStatus === status.value;
+
+                  return (
+                    <button
+                      key={status.value}
+                      onClick={() => setNewStatus(status.value)}
+                      disabled={isCurrentStatus}
+                      className={`p-1.5 sm:p-2 rounded-lg border transition-all text-left ${
+                        isCurrentStatus
+                          ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+                          : isSelected
+                          ? "bg-[#563660] border-[#563660] text-white shadow-md"
+                          : "bg-white border-gray-200 text-gray-700 hover:border-[#563660] hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
+                            isCurrentStatus ? "bg-gray-400" : "bg-green-500"
+                          }`}
+                        ></div>
+                        <span className="font-medium text-xs sm:text-sm truncate">
+                          {status.name}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* مؤشر الحالة المختارة */}
+              {newStatus && (
+                <div className="mt-2 text-xs text-gray-600">
+                  الحالة المختارة:{" "}
+                  <span className="font-semibold text-[#563660]">
+                    {orderStatuses.find((s) => s.value === newStatus)?.name}
+                  </span>
+                </div>
+              )}
             </div>
 
+            {/* معاينة التغيير - مضغوطة */}
+            {newStatus && newStatus !== selectedOrder.status && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-green-700 text-xs leading-relaxed">
+                      تغيير من{" "}
+                      <span className="font-semibold">
+                        {
+                          orderStatuses.find(
+                            (s) => s.value === selectedOrder.status
+                          )?.name
+                        }
+                      </span>{" "}
+                      إلى{" "}
+                      <span className="font-semibold">
+                        {orderStatuses.find((s) => s.value === newStatus)?.name}
+                      </span>
+                    </p>
+                    {selectedOrder.status === "pending" &&
+                      newStatus === "confirmed" && (
+                        <p className="text-green-600 text-xs mt-1">
+                          سيتم نقل الطلب للطلبات المؤكدة
+                        </p>
+                      )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ملاحظة اختيارية - مضغوطة */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 ملاحظة (اختيارية)
               </label>
               <textarea
                 value={statusNote}
                 onChange={(e) => setStatusNote(e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all resize-none"
-                placeholder="أضف ملاحظة حول تحديث الحالة..."
+                rows={2}
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#563660] focus:border-transparent transition-all resize-none"
+                placeholder="ملاحظة حول التحديث..."
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            {/* أزرار التحكم - مضغوطة ومتجاوبة */}
+            <div className="flex gap-1.5 sm:gap-2 pt-1 sm:pt-2">
               <button
                 onClick={handleUpdateStatus}
-                disabled={isUpdatingStatus || !newStatus}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#563660] text-white font-medium rounded-lg hover:bg-[#4b2e55] transition-colors disabled:opacity-50"
+                disabled={
+                  isUpdatingStatus ||
+                  !newStatus ||
+                  newStatus === selectedOrder.status
+                }
+                className="flex-1 flex items-center justify-center gap-1 py-2 sm:py-2.5 bg-[#563660] text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-[#4b2e55] transition-colors disabled:opacity-50"
               >
                 {isUpdatingStatus ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
                 ) : (
-                  <CheckCircle className="w-4 h-4" />
+                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                 )}
-                {selectedOrder.status === "pending" && newStatus === "confirmed"
-                  ? "تأكيد الطلب ونقله"
-                  : "تحديث الحالة"}
+                <span className="hidden sm:inline">
+                  {selectedOrder.status === "pending" &&
+                  newStatus === "confirmed"
+                    ? "تأكيد ونقل"
+                    : "تحديث الحالة"}
+                </span>
+                <span className="sm:hidden">
+                  {selectedOrder.status === "pending" &&
+                  newStatus === "confirmed"
+                    ? "تأكيد"
+                    : "تحديث"}
+                </span>
               </button>
               <button
-                onClick={updateStatusModal.closeModal}
+                onClick={() => {
+                  setNewStatus("");
+                  setStatusNote("");
+                  updateStatusModal.closeModal();
+                }}
                 disabled={isUpdatingStatus}
-                className="flex-1 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 إلغاء
               </button>
