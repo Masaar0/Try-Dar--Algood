@@ -32,7 +32,7 @@ const PricingManagement: React.FC = () => {
 
   useEffect(() => {
     loadPricingData();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPricingData = async (forceRefresh = false) => {
     setIsLoadingPricing(true);
@@ -524,7 +524,7 @@ const PricingManagement: React.FC = () => {
             فشل في تحميل بيانات التسعير
           </h3>
           <button
-            onClick={loadPricingData}
+            onClick={() => loadPricingData(true)}
             className="px-4 py-2 bg-[#563660] text-white rounded-lg hover:bg-[#4b2e55] transition-colors font-medium text-sm"
           >
             إعادة المحاولة

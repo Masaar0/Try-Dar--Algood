@@ -65,7 +65,7 @@ const PredefinedImagesManagement: React.FC = () => {
 
   useEffect(() => {
     loadPredefinedImagesAndCategories();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPredefinedImagesAndCategories = async (forceRefresh = false) => {
     setImagesError("");

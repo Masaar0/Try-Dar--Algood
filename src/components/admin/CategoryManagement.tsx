@@ -75,7 +75,7 @@ const CategoryManagement: React.FC = () => {
 
   useEffect(() => {
     loadCategories();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadCategories = async (forceRefresh = false) => {
     setIsLoading(true);
