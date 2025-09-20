@@ -11,6 +11,7 @@ class FontPreloader {
   private static instance: FontPreloader;
   private loadedFonts = new Set<string>();
   private loadingPromises = new Map<string, Promise<void>>();
+  private isPreloading = false; // إضافة: منع التحميل المتكرر
 
   static getInstance(): FontPreloader {
     if (!FontPreloader.instance) {
@@ -143,6 +144,13 @@ class FontPreloader {
    * تحميل جميع الخطوط مسبقاً
    */
   async preloadAllFonts(): Promise<void> {
+    // إذا كان التحميل جاري، انتظر انتهاءه
+    if (this.isPreloading) {
+      await Promise.all(Array.from(this.loadingPromises.values()));
+      return;
+    }
+
+    this.isPreloading = true;
     try {
       // تحميل جميع الخطوط بشكل متوازي
       const loadingPromises = this.fonts.map((font) =>
@@ -154,6 +162,8 @@ class FontPreloader {
       await document.fonts.ready;
     } catch {
       // خطأ في تحميل بعض الخطوط
+    } finally {
+      this.isPreloading = false;
     }
   }
 

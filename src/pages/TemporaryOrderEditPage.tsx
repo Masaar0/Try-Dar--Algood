@@ -460,7 +460,8 @@ const TemporaryOrderEditContent: React.FC = () => {
   };
 
   const handleExit = () => {
-    navigate("/");
+    // إعادة تحميل الصفحة بالكامل للعودة للموقع الرئيسي
+    window.location.href = "/";
   };
 
   const toggleMobileDetails = () => {

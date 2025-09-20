@@ -56,19 +56,26 @@ const JacketImageCapture = forwardRef<
     const images = container.querySelectorAll(
       "img.logo-overlay"
     ) as NodeListOf<HTMLImageElement>;
+
+    // فحص سريع: إذا كانت جميع الصور محملة، لا نحتاج انتظار
+    const allLoaded = Array.from(images).every(
+      (img) => img.complete && img.naturalHeight !== 0
+    );
+
+    if (allLoaded) {
+      return Promise.resolve(); // إرجاع فوري
+    }
+
+    // فقط إذا كانت هناك صور غير محملة، ننتظر
     const promises = Array.from(images).map((img) => {
       if (img.complete && img.naturalHeight !== 0) {
         return Promise.resolve();
       }
-      return new Promise<void>((resolve, reject) => {
+      return new Promise<void>((resolve) => {
         const timeout = setTimeout(() => {
           console.warn(`Image load timeout: ${img.src}`);
           resolve(); // لا نرفض، فقط نحذر
-        }, 5000);
-
-        img.onload = () => resolve();
-        img.onerror = () =>
-          reject(new Error(`Failed to load image: ${img.src}`));
+        }, 3000); // تحسين: تقليل timeout من 5000 إلى 3000
 
         img.onload = () => {
           clearTimeout(timeout);
@@ -104,32 +111,32 @@ const JacketImageCapture = forwardRef<
     }
     await document.fonts.ready;
 
-    // تأخير إضافي للتأكد من استقرار DOM
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // تحسين: تأخير محسن للتأكد من استقرار DOM (300ms → 150ms)
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     // التأكد من تحميل جميع الشعارات
     await ensureImagesLoaded(container);
 
-    // تأخير إضافي للهواتف للتأكد من تحميل جميع الشعارات
+    // تحسين: تأخير محسن للهواتف والشاشات الكبيرة
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
-      // تأخير إضافي للهواتف (800ms) للتأكد من استقرار العرض
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // تحسين: تأخير محسن للهواتف (800ms → 300ms)
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       // التأكد مرة أخرى من تحميل الصور في الهواتف
       await ensureImagesLoaded(container);
 
-      // تأخير إضافي للتأكد من استقرار الـ DOM
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // تحسين: تأخير محسن للتأكد من استقرار الـ DOM (400ms → 200ms)
+      await new Promise((resolve) => setTimeout(resolve, 200));
     } else {
-      // تأخير إضافي للشاشات الكبيرة أيضاً
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // تحسين: تأخير محسن للشاشات الكبيرة (500ms → 250ms)
+      await new Promise((resolve) => setTimeout(resolve, 250));
 
       // التأكد مرة أخرى من تحميل الصور
       await ensureImagesLoaded(container);
 
-      // تأخير إضافي للاستقرار
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // تحسين: تأخير محسن للاستقرار (300ms → 150ms)
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
 
     // إعدادات الحاوية والعارض
@@ -179,12 +186,12 @@ const JacketImageCapture = forwardRef<
     });
 
     // انتظار إضافي بسيط لاستقرار الـ DOM
-    await new Promise((resolve) => setTimeout(resolve, isMobile ? 300 : 100));
+    await new Promise((resolve) => setTimeout(resolve, isMobile ? 200 : 100));
 
     try {
       const dataUrl = await htmlToImage.toPng(container, {
-        quality: 0.95, // تقليل الجودة قليلاً لتقليل حجم الملف
-        pixelRatio: 2, // تقليل pixelRatio من 3 إلى 2 لتقليل الحجم
+        quality: 0.95, // ✅ محفوظ - نفس الجودة تماماً
+        pixelRatio: 2, // ✅ محفوظ - نفس الجودة تماماً
         width: 320,
         height: 410,
         backgroundColor: "#f9fafb",
@@ -241,16 +248,16 @@ const JacketImageCapture = forwardRef<
 
       setIsCapturing(true);
 
-      // تأخير أولي للتأكد من استقرار الحالة
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // تحسين: تأخير أولي محسن (500ms → 200ms)
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       for (const view of views) {
         try {
           setCurrentView(view);
-          // تأخير أطول بين تغيير العروض لضمان التحديث الكامل
+          // تحسين: تأخير محسن بين كل عرض (800-1200ms → 300-400ms)
           const isMobile = window.innerWidth <= 768;
           await new Promise((resolve) =>
-            setTimeout(resolve, isMobile ? 1200 : 800)
+            setTimeout(resolve, isMobile ? 400 : 300)
           );
           const imageData = await captureView();
           images.push(imageData);
@@ -274,17 +281,18 @@ const JacketImageCapture = forwardRef<
 
       try {
         restoreState(config);
-        // تأخير أطول عند استعادة الحالة لضمان التطبيق الكامل
+        // تحسين: تأخير محسن عند استعادة الحالة (1000-700ms → 500-350ms)
         const isMobile = window.innerWidth <= 768;
         await new Promise((resolve) =>
-          setTimeout(resolve, isMobile ? 1000 : 700)
+          setTimeout(resolve, isMobile ? 500 : 350)
         );
 
         for (const view of views) {
           try {
             setCurrentView(view);
+            // تحسين: تأخير محسن بين كل عرض (1200-800ms → 400-300ms)
             await new Promise((resolve) =>
-              setTimeout(resolve, isMobile ? 1200 : 800)
+              setTimeout(resolve, isMobile ? 400 : 300)
             );
             const imageData = await captureView();
             images.push(imageData);

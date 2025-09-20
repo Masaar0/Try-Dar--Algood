@@ -76,8 +76,8 @@ const JacketCustomizer: React.FC = () => {
       // التقاط صور الجاكيت الحالي
       let jacketImages: string[] = [];
 
-      // تأخير مختصر للتأكد من تحديث العرض
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // تحسين: تأخير محسن للتأكد من تحديث العرض (200ms → 100ms)
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       try {
         if (jacketImageCaptureRef.current) {
