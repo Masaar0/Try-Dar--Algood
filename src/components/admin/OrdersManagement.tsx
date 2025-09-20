@@ -2091,7 +2091,7 @@ const OrdersManagement: React.FC = () => {
           compactHeader={true}
           options={updateStatusModal.options}
         >
-          <div className="space-y-3 max-h-[75vh] overflow-y-auto px-1">
+          <div className="space-y-3 max-h-[70vh] overflow-y-auto px-1">
             {/* عرض الحالة الحالية - مضغوط */}
             <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
               <div className="flex items-center gap-2">
