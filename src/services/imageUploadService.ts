@@ -63,6 +63,26 @@ class ImageUploadService {
   }
 
   /**
+   * رفع فوري مع إرجاع رابط مؤقت فوراً والرفع في الخلفية
+   */
+  async uploadWithInstantResponse(file: File): Promise<{
+    tempUrl: string;
+    uploadPromise: Promise<CloudinaryImageData>;
+  }> {
+    // إنشاء رابط مؤقت فوري
+    const tempUrl = URL.createObjectURL(file);
+
+    // بدء الرفع في الخلفية
+    const uploadPromise = this.uploadSingleImage(file);
+
+    // إرجاع الرابط المؤقت والـ Promise للرفع
+    return {
+      tempUrl,
+      uploadPromise,
+    };
+  }
+
+  /**
    * رفع عدة صور إلى Cloudinary
    */
   async uploadMultipleImages(files: File[]): Promise<CloudinaryImageData[]> {

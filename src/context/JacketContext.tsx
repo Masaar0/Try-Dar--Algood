@@ -31,6 +31,7 @@ export interface Logo {
   y: number;
   scale: number;
   rotation?: number;
+  isTemporary?: boolean; // علامة للشعار المؤقت أثناء الرفع
 }
 
 export interface CustomText {

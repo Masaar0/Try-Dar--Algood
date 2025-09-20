@@ -17,6 +17,10 @@ import { useImageLibrary } from "../../context/ImageLibraryContext";
 
 interface CloudinaryImageUploadProps {
   onImageSelect: (imageData: CloudinaryImageData, originalFile?: File) => void;
+  onInstantUpload?: (
+    tempImageData: CloudinaryImageData,
+    uploadPromise: Promise<CloudinaryImageData>
+  ) => void;
   acceptedFormats?: string[];
   maxFileSize?: number; // بالميجابايت
   className?: string;
@@ -32,6 +36,7 @@ interface CloudinaryImageUploadProps {
 
 const CloudinaryImageUpload: React.FC<CloudinaryImageUploadProps> = ({
   onImageSelect,
+  onInstantUpload,
   onMultipleImagesSelect,
   acceptedFormats = ["image/jpeg", "image/jpg", "image/png", "image/webp"],
   maxFileSize = 10, // 10MB افتراضي
@@ -43,7 +48,7 @@ const CloudinaryImageUpload: React.FC<CloudinaryImageUploadProps> = ({
   onUploadStateChange,
   autoAddToLibrary = true,
 }) => {
-  const { addUserImage, selectImage } = useImageLibrary();
+  const { addUserImage, removeUserImage, selectImage } = useImageLibrary();
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
@@ -184,21 +189,75 @@ const CloudinaryImageUpload: React.FC<CloudinaryImageUploadProps> = ({
         }
         setUploadProgress("تم رفع جميع الصور بنجاح!");
       } else {
-        // رفع صورة واحدة
-        setUploadProgress("جاري رفع الصورة...");
-        const uploadedData = await imageUploadService.uploadSingleImage(
-          files[0]
-        );
+        // رفع صورة واحدة مع الرفع الفوري
+        const file = files[0];
+
+        // رفع فوري مع إرجاع رابط مؤقت فوراً والرفع في الخلفية
+        const { tempUrl: instantUrl, uploadPromise } =
+          await imageUploadService.uploadWithInstantResponse(file);
+
+        // إضافة الصورة فوراً باستخدام الرابط المؤقت
+        const tempImageData = {
+          url: instantUrl,
+          publicId: `temp-${Date.now()}`,
+          width: 0,
+          height: 0,
+          format: file.type.split("/")[1],
+          size: file.size,
+          createdAt: new Date().toISOString(),
+        };
 
         // إضافة الصورة إلى المكتبة تلقائياً إذا كان مفعل
         if (autoAddToLibrary) {
-          addUserImage(uploadedData);
-          selectImage(uploadedData, "user");
+          addUserImage(tempImageData);
+          selectImage(tempImageData, "user");
         }
 
-        setUploadedImages([uploadedData]);
-        onImageSelect(uploadedData, files[0]);
-        setUploadProgress("تم رفع الصورة بنجاح!");
+        setUploadedImages([tempImageData]);
+
+        // استخدام الدالة الجديدة للرفع الفوري إذا كانت متوفرة
+        if (onInstantUpload) {
+          onInstantUpload(tempImageData, uploadPromise);
+        } else {
+          // الطريقة القديمة للتوافق مع المكونات الأخرى
+          onImageSelect(tempImageData, file);
+
+          // استبدال الرابط المؤقت بالرابط النهائي عند اكتمال الرفع
+          uploadPromise
+            .then((finalImageData: CloudinaryImageData) => {
+              // إزالة الصورة المؤقتة من المكتبة
+              if (autoAddToLibrary) {
+                removeUserImage(tempImageData.publicId);
+              }
+
+              // تحديث الصورة بالرابط النهائي
+              setUploadedImages([finalImageData]);
+
+              // إضافة الصورة النهائية إلى المكتبة
+              if (autoAddToLibrary) {
+                addUserImage(finalImageData);
+                selectImage(finalImageData, "user");
+              }
+
+              // استدعاء callback مع البيانات النهائية
+              onImageSelect(finalImageData, file);
+
+              // تنظيف الرابط المؤقت
+              URL.revokeObjectURL(instantUrl);
+            })
+            .catch((error: Error) => {
+              console.error("Upload failed:", error);
+              setError("فشل في رفع الصورة");
+
+              // إزالة الصورة المؤقتة من المكتبة في حالة الفشل
+              if (autoAddToLibrary) {
+                removeUserImage(tempImageData.publicId);
+              }
+
+              // تنظيف الرابط المؤقت في حالة الفشل
+              URL.revokeObjectURL(instantUrl);
+            });
+        }
       }
 
       // إعادة تعيين input

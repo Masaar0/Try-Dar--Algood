@@ -46,6 +46,7 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
   const {
     selectedImages,
     addUserImage,
+    removeUserImage,
     selectImage,
     predefinedImages,
     loadPredefinedImages,
@@ -170,8 +171,13 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
       const existingImage = findExistingImage(imageData.url);
 
       if (existingImage) {
+        // استخدام الصورة الموجودة مع تحميل محسن
         const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.loading = "eager";
+        img.fetchPriority = "high";
         img.src = existingImage.url;
+
         img.onload = () => {
           const initialScale = getInitialScale(view);
           const newLogo = {
@@ -185,9 +191,29 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
           addLogo(newLogo);
           setSelectedLogoId(newLogo.id);
         };
+
+        img.onerror = () => {
+          console.warn("Failed to load existing image, using URL directly");
+          const initialScale = getInitialScale(view);
+          const newLogo = {
+            id: `logo-${Date.now()}`,
+            image: existingImage.url,
+            position: uploadPosition,
+            x: 0,
+            y: 0,
+            scale: initialScale,
+          };
+          addLogo(newLogo);
+          setSelectedLogoId(newLogo.id);
+        };
       } else {
+        // استخدام الصورة الجديدة مع تحميل محسن
         const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.loading = "eager";
+        img.fetchPriority = "high";
         img.src = imageData.url;
+
         img.onload = () => {
           const initialScale = getInitialScale(view);
 
@@ -210,7 +236,97 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
           addLogo(newLogo);
           setSelectedLogoId(newLogo.id);
         };
+
+        img.onerror = () => {
+          console.warn("Failed to load new image, using URL directly");
+          const initialScale = getInitialScale(view);
+
+          const newUploadedImage = {
+            id: `uploaded-${Date.now()}`,
+            url: imageData.url,
+            name: imageData.publicId.split("/").pop() || "صورة مرفوعة",
+            uploadedAt: new Date(),
+          };
+          addUploadedImage(newUploadedImage);
+
+          const newLogo = {
+            id: `logo-${Date.now()}`,
+            image: imageData.url,
+            position: uploadPosition,
+            x: 0,
+            y: 0,
+            scale: initialScale,
+          };
+          addLogo(newLogo);
+          setSelectedLogoId(newLogo.id);
+        };
       }
+      uploadModal.closeModal();
+    }
+  };
+
+  // دالة جديدة للتعامل مع الرفع الفوري مع استبدال الصورة المؤقتة
+  const handleInstantLogoUpload = (
+    tempImageData: CloudinaryImageData,
+    uploadPromise: Promise<CloudinaryImageData>
+  ) => {
+    if (!isPositionOccupied(uploadPosition)) {
+      // إضافة الصورة المؤقتة إلى مكتبة الصور تلقائياً
+      addUserImage(tempImageData);
+      selectImage(tempImageData, "user");
+
+      // إنشاء شعار مؤقت فوراً
+      const tempLogo = {
+        id: `temp-logo-${Date.now()}`,
+        image: tempImageData.url,
+        position: uploadPosition,
+        x: 0,
+        y: 0,
+        scale: getInitialScale(view),
+        isTemporary: true, // علامة للشعار المؤقت
+      };
+
+      addLogo(tempLogo);
+      setSelectedLogoId(tempLogo.id);
+
+      // استبدال الشعار المؤقت بالشعار النهائي عند اكتمال الرفع
+      uploadPromise
+        .then((finalImageData) => {
+          // إزالة الصورة المؤقتة من المكتبة
+          removeUserImage(tempImageData.publicId);
+
+          // إضافة الصورة النهائية إلى المكتبة
+          addUserImage(finalImageData);
+          selectImage(finalImageData, "user");
+
+          // إضافة الصورة المرفوعة إلى قائمة الصور المرفوعة
+          const newUploadedImage = {
+            id: `uploaded-${Date.now()}`,
+            url: finalImageData.url,
+            name: finalImageData.publicId.split("/").pop() || "صورة مرفوعة",
+            uploadedAt: new Date(),
+          };
+          addUploadedImage(newUploadedImage);
+
+          // تحديث الشعار المؤقت بالشعار النهائي
+          updateLogo(tempLogo.id, {
+            image: finalImageData.url,
+            isTemporary: false,
+          });
+
+          // تنظيف الرابط المؤقت
+          URL.revokeObjectURL(tempImageData.url);
+        })
+        .catch((error) => {
+          console.error("Upload failed:", error);
+          // في حالة الفشل، إزالة الشعار المؤقت والصورة المؤقتة من المكتبة
+          removeLogo(tempLogo.id);
+          removeUserImage(tempImageData.publicId);
+          setSelectedLogoId(null);
+          // تنظيف الرابط المؤقت
+          URL.revokeObjectURL(tempImageData.url);
+        });
+
       uploadModal.closeModal();
     }
   };
@@ -634,6 +750,9 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
                       صورة مُعاد استخدامها
                     </p>
                   )}
+                  {logo.isTemporary && (
+                    <p className="text-xs text-blue-600">جاري الرفع...</p>
+                  )}
                 </div>
                 <button
                   onClick={(e) => {
@@ -710,6 +829,7 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
       >
         <CloudinaryImageUpload
           onImageSelect={handleLogoUpload}
+          onInstantUpload={handleInstantLogoUpload}
           acceptedFormats={[
             "image/jpeg",
             "image/jpg",

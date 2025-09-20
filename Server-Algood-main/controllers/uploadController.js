@@ -18,18 +18,10 @@ export const uploadSingleImage = async (req, res) => {
     const uploadOptions = {
       folder: "dar-aljoud/logos",
       resource_type: "image",
-      quality: "100",
+      quality: "100", // جودة عالية 100%
       fetch_format: "auto",
       flags: "progressive:none",
-      // إزالة التحويلات الإجبارية للحفاظ على الأبعاد الأصلية
-      // transformation: [
-      //   {
-      //     width: 1000,
-      //     height: 1000,
-      //     crop: "limit",
-      //     quality: "100",
-      //   },
-      // ],
+      // إزالة التحويلات للحفاظ على الجودة الأصلية 100%
     };
 
     const result = await cloudinary.uploader.upload(fileStr, uploadOptions);
@@ -83,18 +75,10 @@ export const uploadMultipleImages = async (req, res) => {
       const uploadOptions = {
         folder: "dar-aljoud/logos",
         resource_type: "image",
-        quality: "100",
+        quality: "100", // جودة عالية 100%
         fetch_format: "auto",
         flags: "progressive:none",
-        // إزالة التحويلات الإجبارية للحفاظ على الأبعاد الأصلية
-        // transformation: [
-        //   {
-        //     width: 1000,
-        //     height: 1000,
-        //     crop: "limit",
-        //     quality: "100",
-        //   },
-        // ],
+        // إزالة التحويلات للحفاظ على الجودة الأصلية 100%
       };
 
       const result = await cloudinary.uploader.upload(fileStr, uploadOptions);
