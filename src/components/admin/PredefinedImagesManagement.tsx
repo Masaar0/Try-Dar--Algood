@@ -25,8 +25,17 @@ import ConfirmationModal from "../../components/ui/ConfirmationModal";
 import Modal from "../../components/ui/Modal";
 import ImageModal from "../../components/ui/ImageModal";
 import { useModal } from "../../hooks/useModal";
+import { usePredefinedImagesCache } from "../../hooks/usePredefinedImagesCache";
 
 const PredefinedImagesManagement: React.FC = () => {
+  const {
+    getFromCache,
+    setCache,
+    addImageToCache,
+    removeImageFromCache,
+    updateImageInCache,
+  } = usePredefinedImagesCache();
+
   const [predefinedImages, setPredefinedImages] = useState<
     PredefinedImageData[]
   >([]);
@@ -35,11 +44,6 @@ const PredefinedImagesManagement: React.FC = () => {
     useState<string>("all");
   const [imagesError, setImagesError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
-  const [imagesCache, setImagesCache] = useState<{
-    images: PredefinedImageData[];
-    categories: CategoryData[];
-    timestamp: number;
-  } | null>(null);
   const [newImageData, setNewImageData] = useState({
     name: "",
     categoryId: "logos",
@@ -70,17 +74,13 @@ const PredefinedImagesManagement: React.FC = () => {
   const loadPredefinedImagesAndCategories = async (forceRefresh = false) => {
     setImagesError("");
     try {
-      // التحقق من كاش الشعارات أولاً
-      const IMAGES_CACHE_DURATION = 3 * 60 * 1000; // 3 دقائق
-      const now = Date.now();
+      // التحقق من الكاش أولاً
+      const cachedData = getFromCache(forceRefresh);
 
-      if (
-        !forceRefresh &&
-        imagesCache &&
-        now - imagesCache.timestamp < IMAGES_CACHE_DURATION
-      ) {
-        setPredefinedImages(imagesCache.images);
-        setCategories(imagesCache.categories);
+      if (cachedData && !forceRefresh) {
+        setPredefinedImages(cachedData.images);
+        setCategories(cachedData.categories);
+        setIsInitialLoad(false);
         return;
       }
 
@@ -89,12 +89,8 @@ const PredefinedImagesManagement: React.FC = () => {
       setPredefinedImages(data.images);
       setCategories(data.categories);
 
-      // حفظ في كاش الشعارات
-      setImagesCache({
-        images: data.images,
-        categories: data.categories,
-        timestamp: now,
-      });
+      // حفظ في الكاش
+      setCache(data.images, data.categories, forceRefresh);
     } catch (error) {
       setImagesError(
         error instanceof Error ? error.message : "فشل في تحميل البيانات"
@@ -143,13 +139,7 @@ const PredefinedImagesManagement: React.FC = () => {
       setPredefinedImages((prev) => [newImage, ...prev]);
 
       // تحديث الكاش مع الصورة الجديدة
-      if (imagesCache) {
-        setImagesCache({
-          ...imagesCache,
-          images: [newImage, ...imagesCache.images],
-          timestamp: Date.now(),
-        });
-      }
+      addImageToCache(newImage);
 
       setSaveMessage("تم إضافة الشعار الجاهز بنجاح");
       setNewImageData({
@@ -179,13 +169,7 @@ const PredefinedImagesManagement: React.FC = () => {
     );
 
     // تحديث الكاش مع إزالة الصورة
-    if (imagesCache) {
-      setImagesCache({
-        ...imagesCache,
-        images: imagesCache.images.filter((img) => img.id !== imageToDelete.id),
-        timestamp: Date.now(),
-      });
-    }
+    removeImageFromCache(imageToDelete.id);
 
     setSaveMessage("تم حذف الشعار الجاهز بنجاح");
     setTimeout(() => setSaveMessage(""), 3000);
@@ -202,13 +186,7 @@ const PredefinedImagesManagement: React.FC = () => {
       setPredefinedImages((prev) => [...prev, imageToDelete]);
 
       // إعادة الصورة للكاش أيضاً
-      if (imagesCache) {
-        setImagesCache({
-          ...imagesCache,
-          images: [...imagesCache.images, imageToDelete],
-          timestamp: Date.now(),
-        });
-      }
+      addImageToCache(imageToDelete);
 
       setImagesError(
         error instanceof Error ? error.message : "فشل في حذف الشعار من الخادم"
@@ -236,15 +214,7 @@ const PredefinedImagesManagement: React.FC = () => {
       );
 
       // تحديث الكاش مع الصورة المحدثة
-      if (imagesCache) {
-        setImagesCache({
-          ...imagesCache,
-          images: imagesCache.images.map((img) =>
-            img.id === selectedImageForEdit.id ? updatedImage : img
-          ),
-          timestamp: Date.now(),
-        });
-      }
+      updateImageInCache(selectedImageForEdit.id, updatedImage);
 
       setSaveMessage("تم تحديث الشعار بنجاح");
       setTimeout(() => setSaveMessage(""), 3000);
@@ -404,7 +374,16 @@ const PredefinedImagesManagement: React.FC = () => {
         </div>
       )}
 
-      {!isInitialLoad && predefinedImages.length > 0 ? (
+      {isInitialLoad ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-[#563660] mx-auto mb-4" />
+            <p className="text-gray-600 text-sm">
+              جاري تحميل الشعارات الجاهزة...
+            </p>
+          </div>
+        </div>
+      ) : predefinedImages.length > 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -502,7 +481,7 @@ const PredefinedImagesManagement: React.FC = () => {
             </div>
           )}
         </div>
-      ) : !isInitialLoad ? (
+      ) : (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -512,7 +491,7 @@ const PredefinedImagesManagement: React.FC = () => {
             ابدأ بإضافة شعارات جاهزة للمجموعة
           </p>
         </div>
-      ) : null}
+      )}
 
       <ConfirmationModal
         isOpen={deleteImageModal.isOpen}
