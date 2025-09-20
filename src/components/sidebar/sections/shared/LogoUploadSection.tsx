@@ -43,7 +43,13 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
     findExistingImage,
     getUploadedImages,
   } = useJacket();
-  const { selectedImages, addUserImage, selectImage } = useImageLibrary();
+  const {
+    selectedImages,
+    addUserImage,
+    selectImage,
+    predefinedImages,
+    loadPredefinedImages,
+  } = useImageLibrary();
   const [selectedLogoId, setSelectedLogoId] = useState<string | null>(null);
   const [logoSource, setLogoSource] = useState<"predefined" | "upload">(
     showPredefinedLogos ? "predefined" : "upload"
@@ -59,19 +65,14 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
     closeOnBackdropClick: !isUploading,
   });
 
-  // الشعارات الجاهزة - فقط للقسم الخلفي
-  const availableLogos = [
-    {
-      id: "logo1",
-      url: "https://res.cloudinary.com/dzqdifkzy/image/upload/v1757633219/dar-aljoud/predefined-logos/ut5xnsnpctgsza9rzl6a.png",
-      name: "شعار 1",
-    },
-    {
-      id: "logo",
-      url: "https://res.cloudinary.com/dzqdifkzy/image/upload/v1757632863/dar-aljoud/predefined-logos/veebfqv88qftcpjdghox.png",
-      name: "شعار 2",
-    },
-  ];
+  // الشعارات الجاهزة من مكتبة الصور - تصفية حسب التصنيف "logos"
+  const availableLogos = predefinedImages
+    .filter((image) => image.categoryId === "logos")
+    .map((image) => ({
+      id: image.id,
+      url: image.url,
+      name: image.name,
+    }));
 
   // تحويل الشعارات المتاحة إلى تنسيق Gallery
   const galleryPhotos: Photo[] = availableLogos.map((logo) => ({
@@ -85,9 +86,20 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
 
   const galleryCategories = ["الكل", "شعارات"];
 
+  // تحميل الشعارات الجاهزة من مكتبة الصور عند تحميل المكون
+  useEffect(() => {
+    if (showPredefinedLogos && predefinedImages.length === 0) {
+      loadPredefinedImages();
+    }
+  }, [showPredefinedLogos, predefinedImages.length, loadPredefinedImages]);
+
   // تحميل مسبق للشعارات المتاحة عند تحميل المكون
   useEffect(() => {
-    if (showPredefinedLogos && logoSource === "predefined") {
+    if (
+      showPredefinedLogos &&
+      logoSource === "predefined" &&
+      availableLogos.length > 0
+    ) {
       // تحميل أول 12 شعار فوراً
       const priorityLogos = availableLogos.slice(0, 12);
       priorityLogos.forEach((logo, index) => {
@@ -111,8 +123,8 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
           }, index * 100);
         });
       }, 1000);
-    } // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPredefinedLogos, logoSource]);
+    }
+  }, [showPredefinedLogos, logoSource, availableLogos]);
   const isPositionOccupied = (pos: LogoPosition) => {
     return (
       jacketState.logos.some((logo) => logo.position === pos) ||

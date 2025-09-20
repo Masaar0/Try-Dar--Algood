@@ -115,6 +115,11 @@ class ImageUploadService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error(`Delete failed for ${publicId}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        });
         throw new Error(
           errorData.message || `HTTP error! status: ${response.status}`
         );
@@ -123,10 +128,66 @@ class ImageUploadService {
       const result: ApiResponse<{ publicId: string; result: string }> =
         await response.json();
 
-      return result.success && result.data.result === "ok";
+      const success = result.success && result.data.result === "ok";
+
+      if (!success) {
+        console.error(`Delete result not OK for ${publicId}:`, result);
+      }
+
+      return success;
     } catch (error) {
-      console.error("Error deleting image:", error);
+      console.error(`Error deleting image ${publicId}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * حذف صورة مع معلومات مفصلة عن النتيجة
+   */
+  async deleteImageWithDetails(publicId: string): Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/${encodeURIComponent(publicId)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          success: false,
+          message:
+            errorData.message || `فشل في حذف الصورة (${response.status})`,
+          error: errorData.error || response.statusText,
+        };
+      }
+
+      const result: ApiResponse<{ publicId: string; result: string }> =
+        await response.json();
+
+      if (result.success && result.data.result === "ok") {
+        return {
+          success: true,
+          message: "تم حذف الصورة بنجاح",
+        };
+      } else {
+        return {
+          success: false,
+          message: result.message || "فشل في حذف الصورة",
+          error: "DELETE_RESULT_NOT_OK",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: "حدث خطأ أثناء حذف الصورة",
+        error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
+      };
     }
   }
 

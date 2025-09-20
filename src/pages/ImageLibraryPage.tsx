@@ -53,6 +53,7 @@ const ImageLibraryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedImageForView, setSelectedImageForView] = useState<string>("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [deletingStatus, setDeletingStatus] = useState<string>("");
   const [showSelectedSidebar, setShowSelectedSidebar] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedUserImages, setSelectedUserImages] = useState<Set<string>>(
@@ -149,30 +150,146 @@ const ImageLibraryPage: React.FC = () => {
     deleteConfirmModal.openModal();
   };
 
+  // دالة مساعدة للتحقق من وجود الصورة في الخادم
+  const checkImageExists = async (
+    publicId: string
+  ): Promise<{
+    exists: boolean;
+    message: string;
+    imageInfo?: CloudinaryImageData;
+  }> => {
+    try {
+      const imageInfo = await imageUploadService.getImageInfo(publicId);
+      if (imageInfo) {
+        return {
+          exists: true,
+          message: "الصورة موجودة في الخادم",
+          imageInfo,
+        };
+      } else {
+        return {
+          exists: false,
+          message: "الصورة غير موجودة في الخادم",
+        };
+      }
+    } catch (error) {
+      console.error(`Error checking image existence for ${publicId}:`, error);
+      return {
+        exists: false,
+        message: "فشل في التحقق من وجود الصورة في الخادم",
+      };
+    }
+  };
+
+  // دالة مساعدة لإعادة محاولة حذف الصورة من الخادم
+  const retryDeleteFromServer = async (
+    publicId: string,
+    maxRetries: number = 2
+  ): Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }> => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await imageUploadService.deleteImageWithDetails(
+          publicId
+        );
+        if (result.success) {
+          return result;
+        }
+        console.log(
+          `Attempt ${attempt} failed for image ${publicId}:`,
+          result.message
+        );
+      } catch (error) {
+        console.log(`Attempt ${attempt} error for image ${publicId}:`, error);
+      }
+
+      // انتظار قصير قبل المحاولة التالية
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+
+    return {
+      success: false,
+      message: `فشل في حذف الصورة بعد ${maxRetries} محاولات`,
+      error: "MAX_RETRIES_EXCEEDED",
+    };
+  };
+
   const confirmDeleteImage = async () => {
     if (!imageToDelete) return;
 
     setIsDeleting(imageToDelete.publicId);
-    try {
-      const success = await imageUploadService.deleteImage(
-        imageToDelete.publicId
-      );
-      if (success) {
-        // حذف الصورة من المكتبة (سيتم حذفها من التصميم تلقائياً)
-        removeUserImage(imageToDelete.publicId);
+    setDeletingStatus("جاري التحقق من وجود الصورة...");
 
-        // عرض رسالة تأكيد تتضمن معلومات الحذف من التصميم
+    try {
+      // التحقق من وجود الصورة في الخادم أولاً
+      const checkResult = await checkImageExists(imageToDelete.publicId);
+
+      if (!checkResult.exists) {
+        setDeletingStatus(`${checkResult.message}، سيتم حذفها من المكتبة فقط`);
+        removeUserImage(imageToDelete.publicId);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        return;
+      }
+
+      setDeletingStatus("جاري حذف الصورة من الخادم...");
+
+      // محاولة حذف الصورة من الخادم مع إعادة المحاولة
+      const deleteResult = await retryDeleteFromServer(imageToDelete.publicId);
+
+      setDeletingStatus("جاري حذف الصورة من المكتبة...");
+
+      // حذف الصورة من المكتبة المحلية في جميع الحالات
+      removeUserImage(imageToDelete.publicId);
+
+      if (deleteResult.success) {
         console.log(
-          `Image ${imageToDelete.publicId} removed from library and design`
+          `Image ${imageToDelete.publicId} removed from server, library and design`
         );
+        setDeletingStatus("تم حذف الصورة بنجاح!");
+        // انتظار قصير لعرض رسالة النجاح
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
-        alert("فشل في حذف الصورة من الخادم");
+        console.log(
+          `Image ${imageToDelete.publicId} removed from library and design (server deletion failed: ${deleteResult.message})`
+        );
+        setDeletingStatus("تم حذف الصورة من المكتبة، لكن فشل الحذف من الخادم");
+
+        // عرض رسالة تحذيرية للمستخدم مع خيار إعادة المحاولة
+        const shouldRetry = confirm(
+          `تم حذف الصورة من المكتبة، لكن فشل الحذف من الخادم.\n\nالسبب: ${deleteResult.message}\n\nهل تريد إعادة المحاولة؟`
+        );
+
+        if (shouldRetry) {
+          setDeletingStatus("جاري إعادة المحاولة...");
+          const retryResult = await retryDeleteFromServer(
+            imageToDelete.publicId,
+            3
+          );
+          if (retryResult.success) {
+            setDeletingStatus("تم حذف الصورة من الخادم بنجاح!");
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          } else {
+            setDeletingStatus(
+              `فشل في حذف الصورة من الخادم مرة أخرى: ${retryResult.message}`
+            );
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          }
+        }
       }
     } catch (error) {
       console.error("Error deleting image:", error);
-      alert("حدث خطأ أثناء حذف الصورة");
+      setDeletingStatus("حدث خطأ أثناء حذف الصورة");
+      // حتى في حالة الخطأ، نحذف الصورة من المكتبة المحلية
+      removeUserImage(imageToDelete.publicId);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     } finally {
       setIsDeleting(null);
+      setDeletingStatus("");
       setImageToDelete(null);
       deleteConfirmModal.closeModal();
     }
@@ -981,8 +1098,12 @@ const ImageLibraryPage: React.FC = () => {
           onClose={deleteConfirmModal.closeModal}
           onConfirm={confirmDeleteImage}
           title="تأكيد حذف الصورة"
-          message="سيتم حذف هذه الصورة نهائياً من مكتبتك ومن الخادم (Cloudinary)، وسيتم إزالتها تلقائياً من أي تصميم يستخدمها حالياً. لا يمكن التراجع عن هذا الإجراء."
-          confirmText="نعم، احذف"
+          message={
+            deletingStatus
+              ? deletingStatus
+              : "سيتم حذف هذه الصورة نهائياً من مكتبتك ومن الخادم (Cloudinary)، وسيتم إزالتها تلقائياً من أي تصميم يستخدمها حالياً. لا يمكن التراجع عن هذا الإجراء."
+          }
+          confirmText={isDeleting ? "جاري الحذف..." : "نعم، احذف"}
           cancelText="إلغاء"
           type="danger"
           isLoading={!!isDeleting}
