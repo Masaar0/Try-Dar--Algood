@@ -183,28 +183,16 @@ const SelectedImagesSection: React.FC<SelectedImagesSectionProps> = ({
                       {userImages.map((image) => (
                         <div
                           key={image.id}
-                          className="relative group cursor-pointer"
+                          className="relative cursor-pointer"
                           onClick={() => handleImageClick(image.url)}
                         >
-                          <div className="aspect-square bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-[#563660] transition-colors">
+                          <div className="aspect-square bg-white border border-gray-200 rounded-lg overflow-hidden">
                             <img
                               src={image.url}
                               alt={image.name}
                               className="w-full h-full object-contain p-2"
                               loading="lazy"
                             />
-                          </div>
-                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => handleViewImage(image.url, e)}
-                              className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
-                              title="عرض"
-                            >
-                              <Eye className="w-3 h-3" />
-                            </button>
-                          </div>
-                          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity">
-                            {image.name}
                           </div>
                         </div>
                       ))}

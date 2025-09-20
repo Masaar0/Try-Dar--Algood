@@ -840,9 +840,6 @@ const ImageLibraryPage: React.FC = () => {
                             </div>
 
                             <div className="p-2 sm:p-3 border-t border-gray-100">
-                              <h3 className="font-medium text-gray-900 text-xs sm:text-sm truncate mb-1">
-                                {image.publicId.split("/").pop()}
-                              </h3>
                               <div className="flex items-center justify-between text-xs text-gray-500">
                                 <span>{image.format.toUpperCase()}</span>
                                 <span>{formatFileSize(image.size)}</span>
@@ -949,9 +946,6 @@ const ImageLibraryPage: React.FC = () => {
                         className="w-10 h-10 object-contain rounded"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {image.name}
-                        </p>
                         <p className="text-xs text-gray-500">
                           {image.source === "predefined"
                             ? "شعار جاهز"
@@ -1034,9 +1028,6 @@ const ImageLibraryPage: React.FC = () => {
                             />
                           </div>
                           <div className="p-2 border-t border-gray-200">
-                            <p className="text-xs font-medium text-gray-900 truncate mb-1">
-                              {image.name}
-                            </p>
                             <div className="flex items-center justify-between">
                               <p className="text-xs text-gray-500">
                                 {image.source === "predefined"

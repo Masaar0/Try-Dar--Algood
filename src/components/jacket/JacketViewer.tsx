@@ -33,7 +33,7 @@ const JacketViewer: React.FC<JacketViewerProps> = ({
   const jacketRef = useRef<HTMLDivElement>(null);
 
   // تحديد معرف الصفحة بناءً على المسار
-  const getPageKey = (): string => {
+  const getPageKey = React.useCallback((): string => {
     const path = location.pathname;
     if (path === "/customizer") {
       return "customizer";
@@ -43,10 +43,10 @@ const JacketViewer: React.FC<JacketViewerProps> = ({
       return `admin-edit-${path.split("/")[3]}`;
     }
     return "default";
-  };
+  }, [location.pathname]);
 
   // تحميل الحالة المحفوظة أو استخدام القيم الافتراضية
-  const loadSavedState = (): ViewerState => {
+  const loadSavedState = React.useCallback((): ViewerState => {
     try {
       const windowWithState = window as WindowWithViewerState;
       const pageKey = getPageKey();
@@ -65,34 +65,33 @@ const JacketViewer: React.FC<JacketViewerProps> = ({
       isViewsVisible: false,
       isControlsVisible: false,
     };
-  };
+  }, [getPageKey]);
 
   // حفظ الحالة في الذاكرة
-  const saveStateToMemory = React.useCallback((state: Partial<ViewerState>) => {
-    try {
-      const windowWithState = window as WindowWithViewerState;
-      const pageKey = getPageKey();
-      const currentStates = windowWithState.jacketViewerStates || {};
-      const currentState = currentStates[pageKey] || loadSavedState();
-      const newState = { ...currentState, ...state };
-      windowWithState.jacketViewerStates = {
-        ...currentStates,
-        [pageKey]: newState,
-      };
-    } catch (error) {
-      console.warn("Error saving viewer state:", error);
-    }
-  }, []);
+  const saveStateToMemory = React.useCallback(
+    (state: Partial<ViewerState>) => {
+      try {
+        const windowWithState = window as WindowWithViewerState;
+        const pageKey = getPageKey();
+        const currentStates = windowWithState.jacketViewerStates || {};
+        const currentState = currentStates[pageKey] || loadSavedState();
+        const newState = { ...currentState, ...state };
+        windowWithState.jacketViewerStates = {
+          ...currentStates,
+          [pageKey]: newState,
+        };
+      } catch (error) {
+        console.warn("Error saving viewer state:", error);
+      }
+    },
+    [getPageKey, loadSavedState]
+  );
 
   const initialState = loadSavedState();
   const [zoom, setZoom] = useState(initialState.zoom);
   const [desktopZoom, setDesktopZoom] = useState(initialState.desktopZoom);
-  const [isViewsVisible, setIsViewsVisible] = useState(
-    initialState.isViewsVisible
-  );
-  const [isControlsVisible, setIsControlsVisible] = useState(
-    initialState.isControlsVisible
-  );
+  const [isViewsVisible, setIsViewsVisible] = useState(false); // دائماً تبدأ مخفية
+  const [isControlsVisible, setIsControlsVisible] = useState(false); // دائماً تبدأ مخفية
 
   const views: JacketView[] = ["front", "right", "back", "left"];
 
@@ -113,7 +112,7 @@ const JacketViewer: React.FC<JacketViewerProps> = ({
 
       windowWithState.jacketViewerStates = cleanedStates;
     }
-  }, [location.pathname]);
+  }, [location.pathname, getPageKey]);
 
   // حفظ الحالة في الذاكرة عند تغييرها
   useEffect(() => {
@@ -169,18 +168,24 @@ const JacketViewer: React.FC<JacketViewerProps> = ({
     return () => window.removeEventListener("resize", handleResize);
   }, [isSidebarOpen, desktopZoom]);
 
+  // تأثير تدريجي للعناصر عند تحميل المكون أو تغيير حالة التقاط الصور
   useEffect(() => {
     if (!isCapturing) {
+      // إعادة تعيين الحالة لإظهار التأثير التدريجي
+      setIsViewsVisible(false);
+      setIsControlsVisible(false);
+
       const timer = setTimeout(() => {
         setIsViewsVisible(true);
         setIsControlsVisible(true);
       }, 500);
       return () => clearTimeout(timer);
     } else {
+      // إخفاء فوري عند التقاط الصور
       setIsViewsVisible(false);
       setIsControlsVisible(false);
     }
-  }, [isCapturing]);
+  }, [location.pathname, isCapturing]); // يعمل عند تغيير الصفحة أو حالة التقاط الصور
 
   const renderJacketView = () => {
     switch (currentView) {
