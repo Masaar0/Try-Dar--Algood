@@ -1088,13 +1088,9 @@ const ImageLibraryPage: React.FC = () => {
           isOpen={deleteConfirmModal.isOpen}
           onClose={deleteConfirmModal.closeModal}
           onConfirm={confirmDeleteImage}
-          title="تأكيد حذف الصورة"
-          message={
-            deletingStatus
-              ? deletingStatus
-              : "سيتم حذف هذه الصورة نهائياً من مكتبتك ومن الخادم (Cloudinary)، وسيتم إزالتها تلقائياً من أي تصميم يستخدمها حالياً. لا يمكن التراجع عن هذا الإجراء."
-          }
-          confirmText={isDeleting ? "جاري الحذف..." : "نعم، احذف"}
+          title="حذف الصورة"
+          message={deletingStatus ? deletingStatus : "هل تريد حذف هذه الصورة؟"}
+          confirmText={isDeleting ? "جاري الحذف..." : "حذف"}
           cancelText="إلغاء"
           type="danger"
           isLoading={!!isDeleting}
@@ -1118,9 +1114,9 @@ const ImageLibraryPage: React.FC = () => {
           isOpen={deleteAllConfirmModal.isOpen}
           onClose={deleteAllConfirmModal.closeModal}
           onConfirm={handleDeleteAllUserImages}
-          title="تأكيد حذف جميع الصور"
-          message={`سيتم حذف جميع صورك (${userImages.length} صورة) من مكتبتك المحلية فقط (لن يتم حذفها من الخادم). سيتم إزالتها تلقائياً من أي تصميم يستخدمها حالياً.`}
-          confirmText={`نعم، احذف جميع الصور (${userImages.length})`}
+          title="حذف جميع الصور"
+          message={`هل تريد حذف جميع الصور؟ (${userImages.length} صورة)`}
+          confirmText="حذف الكل"
           cancelText="إلغاء"
           type="danger"
           isLoading={isDeletingMultiple}
