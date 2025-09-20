@@ -55,7 +55,9 @@ const OrdersManagement: React.FC = () => {
   const [isLoadingPending, setIsLoadingPending] = useState(false);
   const [error, setError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  // فصل حالة البحث لكل تبويب
+  const [confirmedSearchTerm, setConfirmedSearchTerm] = useState("");
+  const [pendingSearchTerm, setPendingSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pendingCurrentPage, setPendingCurrentPage] = useState(1);
@@ -426,7 +428,7 @@ const OrdersManagement: React.FC = () => {
   const loadOrders = useCallback(
     async (
       forceRefresh = false,
-      customSearchTerm = searchTerm,
+      customSearchTerm = confirmedSearchTerm,
       customStatusFilter = statusFilter
     ) => {
       setError("");
@@ -499,14 +501,14 @@ const OrdersManagement: React.FC = () => {
       currentPage,
       ordersPerPage,
       statusFilter,
-      searchTerm,
+      confirmedSearchTerm,
       getFromCache,
       setCache,
     ]
   );
 
   const loadPendingOrders = useCallback(
-    async (forceRefresh = false, customSearchTerm = searchTerm) => {
+    async (forceRefresh = false, customSearchTerm = pendingSearchTerm) => {
       setError("");
 
       try {
@@ -575,7 +577,13 @@ const OrdersManagement: React.FC = () => {
         setIsLoadingPending(false);
       }
     },
-    [pendingCurrentPage, ordersPerPage, searchTerm, getFromCache, setCache]
+    [
+      pendingCurrentPage,
+      ordersPerPage,
+      pendingSearchTerm,
+      getFromCache,
+      setCache,
+    ]
   );
 
   const loadStats = async (forceRefresh = false) => {
@@ -684,9 +692,9 @@ const OrdersManagement: React.FC = () => {
   // Reload data when page changes (with cache)
   useEffect(() => {
     if (activeTab === "confirmed") {
-      loadOrders(false, searchTerm, statusFilter);
+      loadOrders(false, confirmedSearchTerm, statusFilter);
     }
-  }, [currentPage, statusFilter, loadOrders, searchTerm]);
+  }, [currentPage, statusFilter, loadOrders, confirmedSearchTerm]);
 
   // التحقق من صحة الصفحة الحالية عند تغيير البيانات
   useEffect(() => {
@@ -695,9 +703,9 @@ const OrdersManagement: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === "pending") {
-      loadPendingOrders(false, searchTerm);
+      loadPendingOrders(false, pendingSearchTerm);
     }
-  }, [pendingCurrentPage, loadPendingOrders, searchTerm]);
+  }, [pendingCurrentPage, loadPendingOrders, pendingSearchTerm]);
 
   const handleTabSwitch = (tab: "confirmed" | "pending") => {
     setActiveTab(tab);
@@ -724,8 +732,12 @@ const OrdersManagement: React.FC = () => {
 
   // البحث اليدوي عند الضغط على Enter أو تغيير الفلترة - محسن مع debounce
   const handleSearch = useCallback(() => {
+    // تحديد البحث المناسب للتبويب الحالي
+    const currentSearchTerm =
+      activeTab === "confirmed" ? confirmedSearchTerm : pendingSearchTerm;
+
     // تجاهل البحث إذا كان النص فارغاً أو يحتوي على مسافات فقط
-    if (searchTerm.trim() === "") {
+    if (currentSearchTerm.trim() === "") {
       return;
     }
 
@@ -733,7 +745,7 @@ const OrdersManagement: React.FC = () => {
     setHasActiveSearch(true);
 
     // استخدام النص المقطوع من المسافات للبحث
-    const trimmedSearchTerm = searchTerm.trim();
+    const trimmedSearchTerm = currentSearchTerm.trim();
 
     // إلغاء البحث السابق إذا كان موجوداً
     if (searchTimeout) {
@@ -754,7 +766,8 @@ const OrdersManagement: React.FC = () => {
     setSearchTimeout(timeout as unknown as number);
   }, [
     activeTab,
-    searchTerm,
+    confirmedSearchTerm,
+    pendingSearchTerm,
     statusFilter,
     loadOrders,
     loadPendingOrders,
@@ -763,8 +776,12 @@ const OrdersManagement: React.FC = () => {
 
   // إلغاء الفلترة والبحث وإعادة البيانات للحالة الطبيعية
   const handleClearFilters = useCallback(() => {
-    // مسح الفلاتر
-    setSearchTerm("");
+    // مسح الفلاتر حسب التبويب الحالي
+    if (activeTab === "confirmed") {
+      setConfirmedSearchTerm("");
+    } else {
+      setPendingSearchTerm("");
+    }
     setStatusFilter("");
     setHasActiveSearch(false); // إعادة تعيين حالة البحث النشط
 
@@ -780,18 +797,19 @@ const OrdersManagement: React.FC = () => {
     }
   }, [activeTab, loadOrders, loadPendingOrders]);
 
-  // مسح البحث والفلترة عند تغيير التبويب - محسن للأداء
+  // إخفاء الفلاتر عند تغيير التبويب
   useEffect(() => {
-    setSearchTerm("");
-    setHasActiveSearch(false); // إعادة تعيين حالة البحث النشط
     setShowFilters(false); // إخفاء الفلاتر عند التبديل
-    setStatusFilter(""); // مسح فلتر الحالة أيضاً
   }, [activeTab]);
 
   // إلغاء البحث التلقائي عند مسح كل شيء من حقل البحث
   useEffect(() => {
+    // تحديد البحث المناسب للتبويب الحالي
+    const currentSearchTerm =
+      activeTab === "confirmed" ? confirmedSearchTerm : pendingSearchTerm;
+
     // إذا كان حقل البحث فارغاً أو يحتوي على مسافات فقط وكان هناك بحث نشط مسبقاً
-    if (searchTerm.trim() === "" && hasActiveSearch) {
+    if (currentSearchTerm.trim() === "" && hasActiveSearch) {
       // إعادة تعيين حالة البحث النشط
       setHasActiveSearch(false);
 
@@ -805,7 +823,8 @@ const OrdersManagement: React.FC = () => {
       }
     }
   }, [
-    searchTerm,
+    confirmedSearchTerm,
+    pendingSearchTerm,
     hasActiveSearch,
     activeTab,
     loadOrders,
@@ -833,13 +852,19 @@ const OrdersManagement: React.FC = () => {
       setStatusFilter(status);
       if (activeTab === "confirmed") {
         setCurrentPage(1);
-        loadOrders(true, searchTerm, status); // تمرير status الجديد
+        loadOrders(true, confirmedSearchTerm, status); // تمرير status الجديد
       } else {
         setPendingCurrentPage(1);
-        loadPendingOrders(true, searchTerm); // إجبار التحديث للتصفية الجديدة
+        loadPendingOrders(true, pendingSearchTerm); // إجبار التحديث للتصفية الجديدة
       }
     },
-    [activeTab, loadOrders, loadPendingOrders, searchTerm]
+    [
+      activeTab,
+      loadOrders,
+      loadPendingOrders,
+      confirmedSearchTerm,
+      pendingSearchTerm,
+    ]
   );
 
   const handleViewOrder = (order: OrderData) => {
@@ -1387,11 +1412,29 @@ const OrdersManagement: React.FC = () => {
               <input
                 type="text"
                 placeholder="ابحث برقم الطلب، رمز التتبع، اسم العميل..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={
+                  activeTab === "confirmed"
+                    ? confirmedSearchTerm
+                    : pendingSearchTerm
+                }
+                onChange={(e) => {
+                  if (activeTab === "confirmed") {
+                    setConfirmedSearchTerm(e.target.value);
+                  } else {
+                    setPendingSearchTerm(e.target.value);
+                  }
+                }}
                 onKeyPress={(e) => {
                   if (e.key === "Enter") {
-                    setSearchTerm(searchTerm.trim());
+                    const currentSearchTerm =
+                      activeTab === "confirmed"
+                        ? confirmedSearchTerm
+                        : pendingSearchTerm;
+                    if (activeTab === "confirmed") {
+                      setConfirmedSearchTerm(currentSearchTerm.trim());
+                    } else {
+                      setPendingSearchTerm(currentSearchTerm.trim());
+                    }
                     handleSearch();
                   }
                 }}
@@ -1422,7 +1465,9 @@ const OrdersManagement: React.FC = () => {
               </button>
             )}
             {/* زر إلغاء الفلترة - يظهر فقط عند وجود بحث أو فلترة نشطة */}
-            {(searchTerm.trim() || statusFilter) && (
+            {((activeTab === "confirmed" &&
+              (confirmedSearchTerm.trim() || statusFilter)) ||
+              (activeTab === "pending" && pendingSearchTerm.trim())) && (
               <button
                 onClick={handleClearFilters}
                 disabled={isLoading || isLoadingPending}
@@ -1740,7 +1785,9 @@ const OrdersManagement: React.FC = () => {
               : "لا توجد طلبات قيد المراجعة"}
           </h3>
           <p className="text-sm text-gray-600">
-            {searchTerm || statusFilter
+            {(activeTab === "confirmed" &&
+              (confirmedSearchTerm.trim() || statusFilter)) ||
+            (activeTab === "pending" && pendingSearchTerm.trim())
               ? `لا توجد ${
                   activeTab === "confirmed"
                     ? "طلبات مؤكدة"
