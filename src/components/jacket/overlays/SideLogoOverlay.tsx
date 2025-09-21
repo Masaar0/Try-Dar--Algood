@@ -180,10 +180,25 @@ const SideLogoOverlay: React.FC<SideLogoOverlayProps> = ({ logo, view }) => {
           transform: `scale(${scale})`,
           transformOrigin: "center",
           willChange: "transform",
+          // إعدادات إضافية للهواتف المحمولة
+          WebkitTransform: `scale(${scale})`,
+          WebkitTransformOrigin: "center",
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+          // ضمان ظهور الصورة في الهواتف المحمولة
+          imageRendering: "auto",
         }}
         className="logo-overlay"
         loading="eager"
         decoding="sync"
+        crossOrigin="anonymous"
+        onLoad={() => {
+          // تأكيد تحميل الصورة
+          console.log(`Side logo loaded: ${logo.image}`);
+        }}
+        onError={(e) => {
+          console.error(`Failed to load side logo: ${logo.image}`, e);
+        }}
       />
     </div>
   );

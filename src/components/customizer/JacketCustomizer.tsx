@@ -69,6 +69,8 @@ const JacketCustomizer: React.FC = () => {
 
   const addToCartWithImages = async () => {
     setIsCapturingImages(true);
+    const isMobile = window.innerWidth <= 768;
+
     try {
       // التأكد من تحميل الخطوط قبل بدء التقاط الصور
       await fontPreloader.preloadAllFonts();
@@ -76,12 +78,32 @@ const JacketCustomizer: React.FC = () => {
       // التقاط صور الجاكيت الحالي
       let jacketImages: string[] = [];
 
-      // تحسين: تأخير محسن للتأكد من تحديث العرض (200ms → 100ms)
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // تأخير أطول للهواتف المحمولة للتأكد من تحديث العرض
+      await new Promise((resolve) => setTimeout(resolve, isMobile ? 300 : 100));
 
       try {
         if (jacketImageCaptureRef.current) {
+          console.log("Starting image capture...");
           jacketImages = await jacketImageCaptureRef.current.captureAllViews();
+          console.log(`Captured ${jacketImages.length} images`);
+
+          // فحص الصور المحتجزة للتأكد من صحتها
+          const validImages = jacketImages.filter(
+            (img) => img && img.length > 0
+          );
+          console.log(
+            `Valid images: ${validImages.length}/${jacketImages.length}`
+          );
+
+          if (validImages.length === 0) {
+            console.warn("No valid images captured, retrying...");
+            // محاولة إعادة التقاط الصور
+            await new Promise((resolve) =>
+              setTimeout(resolve, isMobile ? 500 : 200)
+            );
+            jacketImages =
+              await jacketImageCaptureRef.current.captureAllViews();
+          }
         }
       } catch (captureError) {
         console.warn(

@@ -50,14 +50,27 @@ const AdminPanelPage: React.FC = () => {
       try {
         const isValid = await authService.verifySession();
         setIsAuthenticated(isValid);
+
+        // بدء التحديث الدوري في الخلفية إذا كان المستخدم مصادق عليه
+        if (isValid) {
+          authService.startBackgroundRefresh(5); // تحديث كل 5 دقائق في لوحة التحكم
+        } else {
+          authService.stopBackgroundRefresh();
+        }
       } catch (error) {
         console.error("Auth check failed:", error);
         setIsAuthenticated(false);
+        authService.stopBackgroundRefresh();
       } finally {
         setIsLoading(false);
       }
     };
     checkAuth();
+
+    // تنظيف عند إلغاء تحميل المكون
+    return () => {
+      authService.stopBackgroundRefresh();
+    };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {

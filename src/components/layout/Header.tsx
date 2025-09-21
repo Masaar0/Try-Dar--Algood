@@ -36,14 +36,22 @@ const Header: React.FC = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // التحقق من حالة المصادقة للمدير
+  // التحقق من حالة المصادقة للمدير مع تحسينات الأداء
   React.useEffect(() => {
     const checkAdminAuth = async () => {
       try {
         const isValid = await authService.verifySession();
         setIsAdminAuthenticated(isValid);
+
+        // بدء التحديث الدوري في الخلفية إذا كان المستخدم مصادق عليه
+        if (isValid) {
+          authService.startBackgroundRefresh(10); // تحديث كل 10 دقائق
+        } else {
+          authService.stopBackgroundRefresh();
+        }
       } catch {
         setIsAdminAuthenticated(false);
+        authService.stopBackgroundRefresh();
       }
     };
 
@@ -56,8 +64,10 @@ const Header: React.FC = () => {
 
     window.addEventListener("storage", handleStorageChange);
 
+    // تنظيف عند إلغاء تحميل المكون
     return () => {
       window.removeEventListener("storage", handleStorageChange);
+      authService.stopBackgroundRefresh();
     };
   }, []);
 

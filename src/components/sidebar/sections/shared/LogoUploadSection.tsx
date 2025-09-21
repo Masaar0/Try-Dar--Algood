@@ -746,9 +746,7 @@ const LogoUploadSection: React.FC<LogoUploadSectionProps> = ({
                       logo.position}
                   </p>
                   {uploadedImages.some((img) => img.url === logo.image) && (
-                    <p className="text-xs text-green-600">
-                      صورة مُعاد استخدامها
-                    </p>
+                    <p className="text-xs text-green-600">تم الرفع بنجاح ✓</p>
                   )}
                   {logo.isTemporary && (
                     <p className="text-xs text-blue-600">جاري الرفع...</p>

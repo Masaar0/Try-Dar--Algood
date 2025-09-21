@@ -501,15 +501,9 @@ const CloudinaryImageUpload: React.FC<CloudinaryImageUploadProps> = ({
                     {imageData.format.toUpperCase()} •{" "}
                     {Math.round(imageData.size / 1024)}KB
                   </p>
-                  {imageData.publicId.startsWith("temp-") ? (
-                    <p className="text-xs text-blue-600 mt-1">
-                      جاهز للتأكيد ⏳
-                    </p>
-                  ) : (
-                    <p className="text-xs text-green-600 mt-1">
-                      تم الرفع بنجاح ✓
-                    </p>
-                  )}
+                  <p className="text-xs text-green-600 mt-1">
+                    تم الرفع بنجاح ✓
+                  </p>
                 </div>
                 <button
                   onClick={(e) => {

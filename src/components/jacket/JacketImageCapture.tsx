@@ -71,11 +71,19 @@ const JacketImageCapture = forwardRef<
       if (img.complete && img.naturalHeight !== 0) {
         return Promise.resolve();
       }
+
+      // إعادة تحميل الصورة إذا فشلت
+      if (img.src && !img.complete) {
+        const originalSrc = img.src;
+        img.src = "";
+        img.src = originalSrc;
+      }
+
       return new Promise<void>((resolve) => {
         const timeout = setTimeout(() => {
           console.warn(`Image load timeout: ${img.src}`);
           resolve(); // لا نرفض، فقط نحذر
-        }, 3000); // تحسين: تقليل timeout من 5000 إلى 3000
+        }, 5000); // زيادة timeout للهواتف المحمولة
 
         img.onload = () => {
           clearTimeout(timeout);
@@ -102,6 +110,8 @@ const JacketImageCapture = forwardRef<
     const container = containerRef.current;
     if (!container) throw new Error("Container not found");
 
+    const isMobile = window.innerWidth <= 768;
+
     // إجبار إعادة الرسم
     forceRepaint(container);
 
@@ -111,32 +121,57 @@ const JacketImageCapture = forwardRef<
     }
     await document.fonts.ready;
 
-    // تحسين: تأخير محسن للتأكد من استقرار DOM (300ms → 150ms)
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    // تأخير أولي للتأكد من استقرار DOM
+    await new Promise((resolve) => setTimeout(resolve, isMobile ? 200 : 100));
 
     // التأكد من تحميل جميع الشعارات
     await ensureImagesLoaded(container);
 
-    // تحسين: تأخير محسن للهواتف والشاشات الكبيرة
-    const isMobile = window.innerWidth <= 768;
+    // تأخير إضافي للهواتف المحمولة لضمان الاستقرار
     if (isMobile) {
-      // تحسين: تأخير محسن للهواتف (800ms → 300ms)
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // تأخير أطول للهواتف لضمان تحميل جميع العناصر
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // التأكد مرة أخرى من تحميل الصور في الهواتف
       await ensureImagesLoaded(container);
 
-      // تحسين: تأخير محسن للتأكد من استقرار الـ DOM (400ms → 200ms)
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // تأخير إضافي للتأكد من استقرار الـ DOM في الهواتف
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // فحص إضافي للتأكد من تحميل جميع الصور
+      const images = container.querySelectorAll(
+        "img.logo-overlay"
+      ) as NodeListOf<HTMLImageElement>;
+      const failedImages = Array.from(images).filter(
+        (img) => !img.complete || img.naturalHeight === 0
+      );
+
+      if (failedImages.length > 0) {
+        console.warn(
+          `Found ${failedImages.length} images that failed to load, retrying...`
+        );
+        // محاولة إعادة تحميل الصور الفاشلة
+        failedImages.forEach((img) => {
+          if (img.src) {
+            const originalSrc = img.src;
+            img.src = "";
+            img.src = originalSrc;
+          }
+        });
+
+        // انتظار إضافي بعد إعادة التحميل
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await ensureImagesLoaded(container);
+      }
     } else {
-      // تحسين: تأخير محسن للشاشات الكبيرة (500ms → 250ms)
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      // تأخير أقل للشاشات الكبيرة
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       // التأكد مرة أخرى من تحميل الصور
       await ensureImagesLoaded(container);
 
-      // تحسين: تأخير محسن للاستقرار (300ms → 150ms)
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      // تأخير أقل للاستقرار
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // إعدادات الحاوية والعارض
@@ -189,9 +224,10 @@ const JacketImageCapture = forwardRef<
     await new Promise((resolve) => setTimeout(resolve, isMobile ? 200 : 100));
 
     try {
-      const dataUrl = await htmlToImage.toPng(container, {
-        quality: 0.95, // ✅ محفوظ - نفس الجودة تماماً
-        pixelRatio: 2, // ✅ محفوظ - نفس الجودة تماماً
+      // إعدادات محسنة للهواتف المحمولة
+      const captureOptions = {
+        quality: isMobile ? 0.98 : 0.95, // جودة أعلى للهواتف
+        pixelRatio: isMobile ? 1.5 : 2, // تقليل pixelRatio للهواتف لتجنب مشاكل الذاكرة
         width: 320,
         height: 410,
         backgroundColor: "#f9fafb",
@@ -200,11 +236,19 @@ const JacketImageCapture = forwardRef<
         includeQueryParams: true,
         style: {
           imageRendering: "-webkit-optimize-contrast",
+          // إعدادات إضافية للهواتف المحمولة
+          ...(isMobile && {
+            WebkitTransform: "translateZ(0)", // تفعيل hardware acceleration
+            transform: "translateZ(0)",
+            backfaceVisibility: "hidden",
+            perspective: "1000px",
+          }),
         },
         fetchRequestInit: {
-          mode: "cors",
+          mode: "cors" as RequestMode,
+          cache: "no-cache" as RequestCache, // منع التخزين المؤقت للهواتف
         },
-        filter: (node) => {
+        filter: (node: Element) => {
           if (
             node.classList &&
             node.classList.contains("jacket-viewer-controls")
@@ -213,7 +257,15 @@ const JacketImageCapture = forwardRef<
           }
           return true;
         },
-      });
+        // إعدادات إضافية للهواتف المحمولة
+        ...(isMobile && {
+          useCORS: true,
+          allowTaint: false,
+          foreignObjectRendering: false, // تعطيل foreign object rendering للهواتف
+        }),
+      };
+
+      const dataUrl = await htmlToImage.toPng(container, captureOptions);
 
       return dataUrl;
     } finally {
@@ -245,25 +297,37 @@ const JacketImageCapture = forwardRef<
     captureAllViews: async () => {
       const views: JacketView[] = ["front", "back", "right", "left"];
       const images: string[] = [];
+      const isMobile = window.innerWidth <= 768;
 
       setIsCapturing(true);
 
-      // تحسين: تأخير أولي محسن (500ms → 200ms)
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // تأخير أولي أطول للهواتف المحمولة
+      await new Promise((resolve) => setTimeout(resolve, isMobile ? 400 : 200));
 
       for (const view of views) {
         try {
           setCurrentView(view);
-          // تحسين: تأخير محسن بين كل عرض (800-1200ms → 300-400ms)
-          const isMobile = window.innerWidth <= 768;
+
+          // تأخير أطول بين كل عرض للهواتف المحمولة
           await new Promise((resolve) =>
-            setTimeout(resolve, isMobile ? 400 : 300)
+            setTimeout(resolve, isMobile ? 600 : 300)
           );
+
           const imageData = await captureView();
           images.push(imageData);
+
+          // تأخير إضافي بعد كل تقاط للهواتف المحمولة
+          if (isMobile) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          }
         } catch (error) {
           console.error(`Error capturing ${view} view:`, error);
           images.push("");
+
+          // تأخير إضافي في حالة الخطأ للهواتف المحمولة
+          if (isMobile) {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          }
         }
       }
 
@@ -274,6 +338,7 @@ const JacketImageCapture = forwardRef<
     captureFromConfig: async (config: JacketState) => {
       const views: JacketView[] = ["front", "back", "right", "left"];
       const images: string[] = [];
+      const isMobile = window.innerWidth <= 768;
 
       const currentState = saveCurrentState();
 
@@ -281,24 +346,36 @@ const JacketImageCapture = forwardRef<
 
       try {
         restoreState(config);
-        // تحسين: تأخير محسن عند استعادة الحالة (1000-700ms → 500-350ms)
-        const isMobile = window.innerWidth <= 768;
+
+        // تأخير أطول عند استعادة الحالة للهواتف المحمولة
         await new Promise((resolve) =>
-          setTimeout(resolve, isMobile ? 500 : 350)
+          setTimeout(resolve, isMobile ? 800 : 500)
         );
 
         for (const view of views) {
           try {
             setCurrentView(view);
-            // تحسين: تأخير محسن بين كل عرض (1200-800ms → 400-300ms)
+
+            // تأخير أطول بين كل عرض للهواتف المحمولة
             await new Promise((resolve) =>
-              setTimeout(resolve, isMobile ? 400 : 300)
+              setTimeout(resolve, isMobile ? 600 : 300)
             );
+
             const imageData = await captureView();
             images.push(imageData);
+
+            // تأخير إضافي بعد كل تقاط للهواتف المحمولة
+            if (isMobile) {
+              await new Promise((resolve) => setTimeout(resolve, 200));
+            }
           } catch (error) {
             console.error(`Error capturing ${view} view:`, error);
             images.push("");
+
+            // تأخير إضافي في حالة الخطأ للهواتف المحمولة
+            if (isMobile) {
+              await new Promise((resolve) => setTimeout(resolve, 300));
+            }
           }
         }
       } finally {
@@ -328,6 +405,15 @@ const JacketImageCapture = forwardRef<
         justifyContent: "center",
         fontFamily:
           "'Tajawal', 'Katibeh', 'Amiri', 'Noto Naskh Arabic', 'Noto Kufi Arabic', 'Scheherazade New', 'Arial', sans-serif",
+        // إعدادات إضافية للهواتف المحمولة
+        WebkitTransform: "translateZ(0)",
+        transform: "translateZ(0)",
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
+        // ضمان عدم تداخل العناصر
+        isolation: "isolate",
+        // تحسين الأداء في الهواتف المحمولة
+        willChange: "transform",
       }}
     >
       <JacketViewer isSidebarOpen={false} isCapturing={true} />

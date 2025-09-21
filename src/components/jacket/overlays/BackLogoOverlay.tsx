@@ -81,10 +81,23 @@ const BackLogoOverlay: React.FC<BackLogoOverlayProps> = ({ logo, view }) => {
           objectFit: "contain",
           overflow: "visible",
           willChange: "transform",
+          // إعدادات إضافية للهواتف المحمولة
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+          // ضمان ظهور الصورة في الهواتف المحمولة
+          imageRendering: "auto",
         }}
         className="logo-overlay"
         loading="eager"
         decoding="sync"
+        crossOrigin="anonymous"
+        onLoad={() => {
+          // تأكيد تحميل الصورة
+          console.log(`Back logo loaded: ${logo.image}`);
+        }}
+        onError={(e) => {
+          console.error(`Failed to load back logo: ${logo.image}`, e);
+        }}
       />
     </div>
   );
