@@ -24,16 +24,21 @@ import authService from "../../services/authService";
 import ConfirmationModal from "../ui/ConfirmationModal";
 import Modal from "../ui/Modal";
 import { useModal } from "../../hooks/useModal";
+import { useCategoriesCache } from "../../hooks/useCategoriesCache";
 
 const CategoryManagement: React.FC = () => {
+  const {
+    getFromCache,
+    setCache,
+    addCategoryToCache,
+    updateCategoryInCache,
+    removeCategoryFromCache,
+  } = useCategoriesCache();
+
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
-  const [categoriesCache, setCategoriesCache] = useState<{
-    data: CategoryData[];
-    timestamp: number;
-  } | null>(null);
   const [editingCategory, setEditingCategory] = useState<CategoryData | null>(
     null
   );
@@ -78,31 +83,26 @@ const CategoryManagement: React.FC = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadCategories = async (forceRefresh = false) => {
-    setIsLoading(true);
     setError("");
     try {
-      // التحقق من كاش التصنيفات أولاً
-      const CATEGORIES_CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
-      const now = Date.now();
+      // التحقق من الكاش أولاً قبل تعيين حالة التحميل
+      if (!forceRefresh) {
+        const cached = getFromCache(forceRefresh);
 
-      if (
-        !forceRefresh &&
-        categoriesCache &&
-        now - categoriesCache.timestamp < CATEGORIES_CACHE_DURATION
-      ) {
-        setCategories(categoriesCache.data);
-        setIsLoading(false);
-        return;
+        if (cached) {
+          setCategories(cached.data);
+          return;
+        }
       }
+
+      // فقط إذا لم نجد البيانات في الكاش، نبدأ التحميل
+      setIsLoading(true);
 
       const data = await categoryService.getCategories();
       setCategories(data);
 
-      // حفظ في كاش التصنيفات
-      setCategoriesCache({
-        data: data,
-        timestamp: now,
-      });
+      // حفظ في الكاش
+      setCache(data, forceRefresh);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "فشل في تحميل التصنيفات"
@@ -131,14 +131,7 @@ const CategoryManagement: React.FC = () => {
       );
 
       // تحديث الكاش مع التصنيف الجديد
-      if (categoriesCache) {
-        setCategoriesCache({
-          data: [...categoriesCache.data, newCategory].sort(
-            (a, b) => a.order - b.order
-          ),
-          timestamp: Date.now(),
-        });
-      }
+      addCategoryToCache(newCategory);
 
       setSaveMessage("تم إنشاء التصنيف بنجاح");
       setNewCategoryData({
@@ -179,14 +172,7 @@ const CategoryManagement: React.FC = () => {
       );
 
       // تحديث الكاش مع التصنيف المحدث
-      if (categoriesCache) {
-        setCategoriesCache({
-          data: categoriesCache.data.map((cat) =>
-            cat.id === editingCategory.id ? updatedCategory : cat
-          ),
-          timestamp: Date.now(),
-        });
-      }
+      updateCategoryInCache(editingCategory.id, updatedCategory);
 
       setSaveMessage("تم تحديث التصنيف بنجاح");
       setEditingCategory(null);
@@ -210,14 +196,7 @@ const CategoryManagement: React.FC = () => {
       );
 
       // تحديث الكاش مع إزالة التصنيف
-      if (categoriesCache) {
-        setCategoriesCache({
-          data: categoriesCache.data.filter(
-            (cat) => cat.id !== categoryToDelete.id
-          ),
-          timestamp: Date.now(),
-        });
-      }
+      removeCategoryFromCache(categoryToDelete.id);
 
       setSaveMessage("تم حذف التصنيف بنجاح");
       setCategoryToDelete(null);
@@ -237,10 +216,7 @@ const CategoryManagement: React.FC = () => {
       setCategories(resetData);
 
       // تحديث الكاش مع البيانات الجديدة
-      setCategoriesCache({
-        data: resetData,
-        timestamp: Date.now(),
-      });
+      setCache(resetData, true);
 
       setSaveMessage("تم إعادة تعيين التصنيفات بنجاح");
       resetCategoriesModal.closeModal();
@@ -339,14 +315,17 @@ const CategoryManagement: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900">
               التصنيفات المتاحة ({categories.length})
             </h3>
-            {categoriesCache && (
-              <p className="text-xs text-gray-500 mt-1">
-                البيانات محفوظة في الكاش - آخر تحديث:{" "}
-                {new Date(categoriesCache.timestamp).toLocaleTimeString(
-                  "ar-SA"
-                )}
-              </p>
-            )}
+            {(() => {
+              const cached = getFromCache();
+              return (
+                cached && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    البيانات محفوظة في الكاش - آخر تحديث:{" "}
+                    {new Date(cached.timestamp).toLocaleTimeString("ar-SA")}
+                  </p>
+                )
+              );
+            })()}
           </div>
 
           <div className="divide-y divide-gray-200">

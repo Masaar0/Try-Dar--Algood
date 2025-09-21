@@ -17,17 +17,16 @@ import pricingService, { PricingData } from "../../services/pricingService";
 import authService from "../../services/authService";
 import ConfirmationModal from "../../components/ui/ConfirmationModal";
 import { useModal } from "../../hooks/useModal";
+import { usePricingCache } from "../../hooks/usePricingCache";
 
 const PricingManagement: React.FC = () => {
+  const { getFromCache, setCache, updatePricingInCache } = usePricingCache();
+
   const [pricingData, setPricingData] = useState<PricingData | null>(null);
   const [isLoadingPricing, setIsLoadingPricing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [pricingError, setPricingError] = useState("");
-  const [pricingCache, setPricingCache] = useState<{
-    data: PricingData;
-    timestamp: number;
-  } | null>(null);
   const resetPricingModal = useModal();
 
   useEffect(() => {
@@ -35,32 +34,27 @@ const PricingManagement: React.FC = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPricingData = async (forceRefresh = false) => {
-    setIsLoadingPricing(true);
     setPricingError("");
 
     try {
-      // التحقق من كاش التسعير أولاً
-      const PRICING_CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
-      const now = Date.now();
+      // التحقق من الكاش أولاً قبل تعيين حالة التحميل
+      if (!forceRefresh) {
+        const cached = getFromCache(forceRefresh);
 
-      if (
-        !forceRefresh &&
-        pricingCache &&
-        now - pricingCache.timestamp < PRICING_CACHE_DURATION
-      ) {
-        setPricingData(pricingCache.data);
-        setIsLoadingPricing(false);
-        return;
+        if (cached) {
+          setPricingData(cached.data);
+          return;
+        }
       }
+
+      // فقط إذا لم نجد البيانات في الكاش، نبدأ التحميل
+      setIsLoadingPricing(true);
 
       const data = await pricingService.getPricing();
       setPricingData(data);
 
-      // حفظ في كاش التسعير
-      setPricingCache({
-        data: data,
-        timestamp: now,
-      });
+      // حفظ في الكاش
+      setCache(data, forceRefresh);
     } catch (error) {
       setPricingError(
         error instanceof Error ? error.message : "فشل في تحميل بيانات التسعير"
@@ -88,10 +82,7 @@ const PricingManagement: React.FC = () => {
       setPricingData(updatedData);
 
       // تحديث الكاش مع البيانات الجديدة
-      setPricingCache({
-        data: updatedData,
-        timestamp: Date.now(),
-      });
+      updatePricingInCache(updatedData);
 
       setSaveMessage("تم حفظ التغييرات بنجاح");
       setTimeout(() => setSaveMessage(""), 3000);
@@ -116,10 +107,7 @@ const PricingManagement: React.FC = () => {
       setPricingData(resetData);
 
       // تحديث الكاش مع البيانات الجديدة
-      setPricingCache({
-        data: resetData,
-        timestamp: Date.now(),
-      });
+      updatePricingInCache(resetData);
 
       setSaveMessage("تم إعادة تعيين الأسعار بنجاح");
       setTimeout(() => setSaveMessage(""), 3000);
@@ -477,14 +465,17 @@ const PricingManagement: React.FC = () => {
                     return `${year}/${month}/${day}`;
                   })()}
                 </p>
-                {pricingCache && (
-                  <p className="text-white text-opacity-70 text-xs mt-1">
-                    البيانات محفوظة في الكاش - آخر تحديث:{" "}
-                    {new Date(pricingCache.timestamp).toLocaleTimeString(
-                      "ar-SA"
-                    )}
-                  </p>
-                )}
+                {(() => {
+                  const cached = getFromCache();
+                  return (
+                    cached && (
+                      <p className="text-white text-opacity-70 text-xs mt-1">
+                        البيانات محفوظة في الكاش - آخر تحديث:{" "}
+                        {new Date(cached.timestamp).toLocaleTimeString("ar-SA")}
+                      </p>
+                    )
+                  );
+                })()}
               </div>
             </div>
 
